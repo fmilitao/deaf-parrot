@@ -1,0 +1,5 @@
+//OK 1
+//OK !int
+
+fun( x : int :: ( none * none ) ).(x::none) 1
+

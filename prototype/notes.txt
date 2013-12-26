@@ -1,0 +1,110 @@
+PROTOTYPE:
+
+1. Examples should use initial empty line to not show typing info.
+2. Rethink interface.
+3. How to show multiple levels of same capability?
+
+remember to disable Chrome's cache!
+
+========================================
+
+FIXME: same improvement to other type checker functions?
+Like equals and whatnot?
+
+// setup visitors to avoid big switch at runtime
+for( var i in AST.kinds ){
+	visitor[i] = getVisit();
+}
+
+var run = function(ast,env){
+	if( !visitor.hasOwnProperty( ast.kind ) )
+		throw error;
+	
+	return (visitor[ast.kind])(ast,env);
+}
+
+-- avoid closures by defining function with argument?
+
+========================================
+
+TYPECHECKER, missing features: 
+ - Missing Delta^G restrictions on environments.
+ ensure no access to enclosing defocus-guarantee of environment inside 
+ functions and foralls
+	Ensure no defocus guarantee on functions and forall abstraction
+
+ - isEquals on environments must be cleaned
+ 	Equals and subtypeOf functions must be cleaned they are messy... and buggy?
+
+ - join multiple typing environments with (+)
+
+========================================
+
+LOWER PRIORITY: 
+ - organize type error messages, as CONSTANTS? / FUNCTIONS?
+ - Program assertions != Type Errors / Interpreter Errors
+ - pass assert function instead of 'ast'?
+
+TODO?
+
+# Notes on typing algorithm:
+ - try to stack all "touched" capabilities at the end of a function.
+ - check that OPEN does not produce a resulting environment/type that
+ depends on scoped types.
+ - packing up to subtyping, instead of equals?
+ maybe allow manually to apply subtyping? (e : A)?
+ list example would be made slightly simpler, maybe?
+
+# ensure location variables cannot be hidden, or renamed.
+	If the variable is hidden it may cause leaks, rename is always possible
+	anyway...
+
+# IDIOT YOU ARE USING RECURSION WHEN WHILE IS ENOUGH
+
+# stacking alternatives:
+ - other alternatives must be invalid, or there could be duplication of caps.
+ - improve mergin so that differences are grouped in *-type and then (+). This
+ 	will then allow merging environments with different caps.
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+PENDING FIXES:
+	
+2. Non-syntax directed alternative open.
+	Currently the typechecker requires a "@p E" to know precisely where an
+	alternative should be broken down into its separate bits. However, this is
+	just a simplification since the typechecker could employ a search algorithm
+	to check all possible different alternatives until finding one that checks
+	such code. (this is decidable since there is a finite number of expressions
+	and the alternatives also list a finite number of elements)
+
+3. Define convenient parsing priorities (to recude use of parenthesis).
+	This is needed, but boring, since it is not all that clear which changes
+	will potentially cause conflicts in the grammar making this a try-fail
+	change...
+	Grammar should probably allow:
+ 		fun( x : ... ) . e := 2
+ 	to work directly? What are some convenient priorities?
+
+4. Syntax sugar for multi-open?
+	open < a, < b, < c , < d , x > > > > = x in ... end
+	
+===============================================================================
+
+REMEMBER:
+ 	- to disable chrome's cache
+ 	- launch 'static' on trunk/
+
+CODE STYLE:
+ 	--- ALWAYS USE IDENTITY === and !==
+	- use 'instanceof' instead of has property 'ast' for errors
+	+ use finally for exceptions?
+	- CONSTANTS ARE CAPPED
+	- console.debug for debug messages
+	- console.error for error messages, it prints stack trace!
+	- https://developers.google.com/chrome-developer-tools/docs/console
+	- convention: "fake" protected/private fields using $NAME
+
+ALL CODE SHOULD INCLUDE COMMENT AT TOP:
+// Copyright (C) 2013 Filipe Militao <filipe.militao@cs.cmu.edu>
+// GPL v3 Licensed http://www.gnu.org/licenses/

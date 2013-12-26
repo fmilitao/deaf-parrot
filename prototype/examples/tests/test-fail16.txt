@@ -1,0 +1,4 @@
+//FAIL Invalid field 'c' for record
+//FAIL Invalid field 'c' for '[a: !int,b: !int]'
+
+{a = 2, b = 3}.c

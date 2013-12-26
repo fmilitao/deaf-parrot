@@ -1,0 +1,6 @@
+//FAIL Duplicated field 'a' in record
+//FAIL Duplicated field 'a' in '[a: !int,b: !int]'
+
+{a = 2, b = 3, a = 4}
+
+

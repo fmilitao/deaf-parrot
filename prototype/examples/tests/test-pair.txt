@@ -1,0 +1,31 @@
+//OK 34
+//OK !int
+
+let newPair = fun( _ : [] ).
+	open <pl,l> = new {} in
+	open <pr,r> = new {} in
+		<pl:left,<pr:right,
+			{
+			initL = fun( i : int :: rw pl [] ).( l := i ),
+			initR = fun( i : int :: rw pr [] ).( r := i ),
+			sum = fun( _ : [] :: ( rw pl int * rw pr int ) ). !l,
+			destroy = fun ( _ : [] :: ( rw pl int * rw pr int ) ).( delete l; delete r ) 
+			}::( rw pr [] * rw pl [] )
+		>>
+	end
+	end
+	in
+
+	// client code
+	open <l,tmp> = newPair({}) in
+	open <r,x> = tmp in
+		x.initL(12);
+		x.initR(34);
+		//x.sum({});
+		// intentionally switch order for testing
+		x.sum({}::(rw r int * rw l int));
+		x.destroy({})
+	end
+	end
+
+end

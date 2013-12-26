@@ -1,0 +1,10 @@
+//FAIL Identifier 'y' not found
+//FAIL Identifier 'y' not found
+
+let x = 0 in
+	let x = x in
+		y
+	end
+end
+
+

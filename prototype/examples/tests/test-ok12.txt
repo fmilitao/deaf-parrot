@@ -1,0 +1,21 @@
+//OK {123,Function Value}
+//OK ![!int,!forall p.(!(((ref p) :: rw p (A#int)) -o (!(ref p) :: rw p (A#int+B#int)))]
+
+{
+	// 1st
+	let f = // recursion test
+		fun Rec( x: One#!int + Two#!int ) : !int.
+			case x of
+			  Two#a -> a
+			| One#b -> b; Rec Two#b
+			| Bal#qwe -> "String?"
+			end
+		in
+		f One#123
+	end,
+
+	// 2nd
+	<p>fun( x : ref p :: rw p (A#int) ).
+		// weakening the stacked type
+		(x :: rw p (A#int+B#int))
+}

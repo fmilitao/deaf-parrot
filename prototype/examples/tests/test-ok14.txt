@@ -1,0 +1,8 @@
+//OK Function Value
+//OK !forall p.(!forall t.(!((int :: (rw p !int * rw t !int)) -o (!int :: (rw p !int * rw t !int)))
+
+<p><t>fun( x : int :: ( rw p int * rw t int ) ).(
+	let y = x in
+		0
+	end
+)

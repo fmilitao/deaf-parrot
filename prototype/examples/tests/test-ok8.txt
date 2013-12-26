@@ -1,0 +1,15 @@
+//OK false
+//OK !boolean
+
+// test of manually stacking capabilities
+open <ty,y> = new false in
+	open <tx,x> = new 0 in
+		let f = fun( z : ref tx :: rw ty boolean :: rw tx int ).(!z) in
+			f x;
+			f ( x :: rw tx int );
+			f ( x :: rw ty boolean::rw tx int )
+		end;
+		delete x;
+		delete y
+	end
+end

@@ -1,0 +1,125 @@
+
+// Simple Linked List (ADT)
+// mostly just to test recursive types...
+
+typedef Empty = E#(exists p.( ref p :: rw p [] )) 
+
+// a node is 'generic' in T.
+typedef Node = forall T.rec Node.(  
+	// List Node
+	N#(exists p.( ref p :: rw p [T,Node] ) )
+	// Empty Node 
+	+ E#(exists p.( ref p :: rw p [] ) )
+ )
+
+
+let ListADT = <T> 
+	<Empty:Empty,
+	<Node[T]:List, {
+	newList = fun ( _ : [] ).
+		E#new {},
+	
+	insertN = fun _( e : T , list : Node[T] ): Node[T].
+		N#new {e,list},
+
+	insertE = fun _( e : T , list : Empty ): Node[T].
+		N#new {e,list},
+
+	// A bit silly that the last element does not contain anything stored in it...
+	remove = fun( list : Node[T] ).
+		case list of
+			N#node ->
+				open <p,x> = node in
+					let result = !x in
+						delete x;
+						Result#result
+					end
+				end
+		|	E#node ->
+				open <p,x> = node in
+					let result = !x in
+						delete x;
+						Empty#{} // no result
+					end
+				end
+		end
+	}>>
+	in
+	0
+end
+
+;
+
+// Another version is *without* abstracting the list, just to test unfolding 
+// through subtyping on the empty and non-empty list types.
+// WARNING: slightly unpleasantly lengthy types...
+let GenericList = <T> {
+	newList = fun ( _ : [] ).
+		E#new {},
+	insert = fun ( e : T , list : Node[T] ).
+		N#new {e,list},
+	remove = fun( list : Node[T] ).
+		case list of
+			N#node ->
+				open <p,x> = node in
+					let result = !x in
+						delete x;
+						Result#result
+					end
+				end
+		|	E#node ->
+				open <p,x> = node in
+					let result = !x in
+						delete x;
+						Empty#{} // no result
+					end
+				end
+		end
+	}
+	in
+
+	// client code:
+	let f = GenericList[int] in
+		open <l1,list> = new (f.newList {}) in
+			// inserting is always good
+			list := (f.insert 1 !list);
+			list := (f.insert 2 !list);
+			// however, on removing we get a less precise type
+			list := (f.remove !list);
+			// that must be case analyzed with the 2 branches matching
+			// on the same result *and* their effects:
+			case !list of
+				Empty#n -> // no result
+					delete list;
+					{}
+			|	Result#n -> // result is a pair
+					let [a,b] = n in
+						// convenient auxiliary function to
+						// just iterate over all elements of the list
+						let it = fun Rec( list : Node[int] ) : (!(Empty#![])).
+				            case list of
+				              E#n ->
+				              	open <l0,ptr> = n in
+				              		delete ptr;
+				              		Empty#{}
+				              	end
+				            | N#n -> 
+				              	open <l0,ptr> = n in
+				              		let [e,next] = !ptr in
+				              			delete ptr;
+				              			Rec next
+				              		end
+								end
+							end
+			            in
+			            	// ok to ignore 'e' since it is pure
+			            	// the last node of the list is place in 'list'
+			            	list := (it b);
+			            	delete list; // yields Empty#[]
+			            	{}
+						end
+					end
+			end
+		end
+	end
+end

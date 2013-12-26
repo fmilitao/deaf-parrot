@@ -1,0 +1,28 @@
+
+// Very simple typestate example with just two states: BOOL/INT.
+
+let newObject = fun( _ : [] ).
+	open <p,x>= new 0 in
+		< rw p boolean : BOOL,
+		< rw p int : INT,
+		{
+		 setBool = fun( y : boolean :: rw p int ). ( x := y ),
+		 setInt = fun( y : int :: rw p boolean ).( x := y ),
+		 getInt = fun( _ : [] :: rw p int ).( !x ),
+		 getBool = fun( _ : [] :: rw p boolean ).( !x ),
+		 dispose = fun( _ : [] :: rw p int ).( delete x )
+		} :: rw p int >>
+	end
+	in
+	
+	// client code:
+	open <B,tmp> = newObject {} in
+	open <I,obj> = tmp in
+		obj.getInt {};
+		obj.setBool false;
+		obj.setInt 31337;
+		obj.dispose {}
+	end
+	end
+
+end

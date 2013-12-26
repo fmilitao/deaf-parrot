@@ -1,0 +1,7 @@
+//OK Function Value
+//OK !(int -o !(int -o !int))
+
+let f = fun( x : int ). fun( y : int ).x in
+    f 0 0;
+    f
+end

@@ -1,0 +1,109 @@
+
+import abort
+import println
+
+// head node
+typedef H = rec X.forall p.( ( rw p !(Empty#[]) => rw p !(Empty#[]) ; (X[p]) ) (+)
+			( rw p (Closed#[]) => none ) (+) 
+			( rw p (Node#[int,exists q.(!ref q :: (X[q]) )]) => none ) )
+
+// tail node
+typedef T = forall p.( rw p !(Empty#[]) =>
+	( (rw p (Closed#[])) (+) (rw p (Node#[int,exists q.(!ref q :: (H[q]))]))) )
+
+let newPipe = fun( _ : [] ).
+	// initial node to be shared:
+	open <nloc,node> = new Empty#{} in
+		share nloc as (H[nloc]) || (T[nloc]);
+	open <hloc,head> = new <nloc,node :: (H[nloc])> in
+	open <tloc,tail> = new <nloc,node :: (T[nloc])> in
+		< rw hloc (exists p.(!ref p :: (H[p]))) : Consumer,
+		< rw tloc (exists p.(!ref p :: (T[p]))) : Producer,
+		{
+		put = fun( e : int :: rw tloc (exists p.( !ref p :: (T[p]) )) ).
+			open <l1,last> = new Empty#{} in
+				open <l2,oldlast> = !tail in
+					focus l2;
+						share l1 as (H[l1]) || (T[l1]);
+						oldlast := Node#{ e , <l1,last :: (H[l1])> };
+					defocus;
+					tail := <l1,last :: (T[l1])>
+				end
+			end,
+		
+		close = fun( _ : [] :: rw tloc (exists p.(!ref p :: (T[p]) )) ).
+			open <l1,last> = !tail in
+				delete tail;
+				focus l1;
+					last := Closed#{};
+				defocus
+			end,
+
+		tryTake = fun( _ : [] :: rw hloc (exists p.(!ref p :: (H[p]) )) ).
+			open <f1,first> = !head in
+				@f1
+				(focus f1;
+				case !first of
+						Empty#_ -> // still empty, no need to change anything
+							first := Empty#{};
+							defocus;
+							head := <f1,first :: (H[f1])>; // reassign (content was/is linear type)
+							NoResult#({}::rw hloc (exists p.(!ref p :: (H[p]))))
+				|		Closed#_ -> // end of pipe, pipe closed
+							delete first;
+							delete head;
+							defocus;
+							Depleted#{}
+				|		Node#n ->
+							delete first;
+							defocus; // defocus moved just to reduce elements in delta,
+								// could be further below
+							let [element, next] = n in
+								head := next; // 'next' is a packed type
+								Result#(element :: rw hloc (exists p.(!ref p :: (H[p]))) )
+							end
+				end)
+			end
+		}::( (rw hloc (exists p.(!ref p :: (H[p])))) * (rw tloc (exists p.(!ref p :: (T[p])))) )
+		>>
+	end
+	end
+	end
+	in
+	
+	//
+	// client code
+	//
+	
+	let takeAll = <C>fun Rec( reader :
+		![ tryTake : [] :: C -o NoResult#( [] :: C ) +
+					 Depleted#[] + Result#( int :: C ) ] :: C ) : [].
+		let res = reader.tryTake({}) in
+			case res of
+				Depleted#_ -> {} // pipe closed, done
+			|	Result#res -> // ignores result
+					println[int] res;
+					Rec ( reader ) // not closed
+			// this is an assertion error, since we are assuming that the pipe
+			// was already closed when 'takeAll' is called.
+			|	NoResult#_ -> abort[C] "Assertion Error: Pipe Not Closed" 
+			end
+		end
+		in
+
+		open <C,p> = newPipe({}) in
+		open <P,pipe> = p in
+			let writer = pipe in
+				writer.put( 1 );
+				writer.put( 2 );
+				writer.close( {} )
+			end;
+			let reader = pipe in
+				takeAll[C] ( reader ) // all pipe components exhausted
+			end;
+			"done!"
+		end
+		end
+	
+	end
+end

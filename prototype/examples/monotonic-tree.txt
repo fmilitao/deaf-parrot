@@ -1,0 +1,9 @@
+// Place holder for return of monotonic tree example
+
+/*
+- monotonic
+	( Raw => Ready ; RP (+) RP ) || ...
+	typedef RP = rec X.( Ready => Ready ; X )
+*/
+
+"incomplete"

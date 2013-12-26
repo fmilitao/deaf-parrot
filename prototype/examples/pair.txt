@@ -1,0 +1,66 @@
+// Pair example + client code.
+
+import add
+
+// 1. only abstracting the location variable
+let newPair = fun( _ : [] ).
+	open <pl,l> = new {} in
+	open <pr,r> = new {} in
+		// packs 'pl' as "left" and 'pr' as "right"
+		<pl:left,<pr:right,
+			{
+			initL = fun( i : int :: rw pl [] ).( l := i ),
+			initR = fun( i : int :: rw pr [] ).( r := i ),
+			sum = fun( _ : [] :: ( rw pl int * rw pr int ) ).(add !l !r),
+			destroy = fun ( _ : [] :: ( rw pl int * rw pr int ) ).( delete l; delete r ) 
+			}::( rw pr [] * rw pl [] )
+			// we must explicitly stacks caps to ensure they are placed INSIDE the packed value
+		>>
+	end
+	end
+	in
+
+	// client code
+	open <l,tmp> = newPair({}) in
+	open <r,x> = tmp in
+		x.initL(12);
+		x.initR(30);
+		// intentionally switch cap order for testing
+		let res = x.sum({}::(rw r int * rw l int)) in
+			x.destroy({});
+			res
+		end
+	end
+	end
+
+end;
+
+// 2. typestate version, same code different packs.
+let newPair = fun( _ : [] ).
+	open <pl,l> = new {} in
+	open <pr,r> = new {} in
+		<rw pl []:EL,<rw pr []:ER,<rw pr int:R,<rw pl int:L,
+			{
+			initL = fun( i : int :: rw pl [] ).( l := i ),
+			initR = fun( i : int :: rw pr [] ).( r := i ),
+			sum = fun( _ : [] :: ( rw pl int * rw pr int ) ).(add !l !r),
+			destroy = fun ( _ : [] :: ( rw pl int * rw pr int ) ).( delete l; delete r ) 
+			}::( rw pr [] * rw pl [] )
+		>>>>
+	end
+	end
+	in
+
+	open < EL, t0 > = newPair({}) in
+	open < ER, t1 > = t0 in
+	open < R, t2 > = t1 in
+	open < L, obj > = t2 in
+			obj.initL(12);
+			obj.initR(30);
+			let res = obj.sum({}) in
+				obj.destroy({});
+				res
+			end
+	end end end end
+
+end

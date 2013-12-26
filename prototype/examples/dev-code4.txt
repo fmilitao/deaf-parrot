@@ -1,0 +1,33 @@
+
+typedef EMPT = forall p.( rw p !(E#[]) )
+typedef ELEM = forall T.rec X.forall p.( rw p (N#[T,exists q.( (!ref q) :: (EMPT[q] (+) X[q]) )] ))
+
+let newStack = <T>
+	open <h,head> = new E#{} in
+		<EMPT[h]:E,
+		<ELEM[T][h]:NE,
+		(fun( _ : [] :: ( ELEM[T][h] ) ).
+				case !head of
+					N#a ->
+						let [e,n] = a in
+							open <t,ptr> = n in
+								@t
+								(head := !ptr;
+								delete ptr);
+								e
+							end
+						end
+				end)
+		/* (fun( e : T :: ( EMPT[h] (+) ELEM[T][h] ) ).(
+				@h  
+				open <n,next> = new !head in
+					head := N#{ e , <n,next::(EMPT[n] (+) ELEM[T][n])> }
+				end; 
+				0 )
+		)*/ :: rw h !(E#[]) 
+		>>
+	end
+	in
+	newStack
+
+end

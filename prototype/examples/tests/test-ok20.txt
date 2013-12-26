@@ -1,0 +1,23 @@
+//OK {Function Value,Function Value,Function Value}
+//OK ![!(rec A.(L#rec B.(L#B+Q#int)+Q#int) -o rec A.(L#A+Q#int)),!(int -o (boolean -o !!int)),!(rec A.A -o rec A.rec B.A)]
+
+{
+// this should work
+// also folds when result is given, note that result can only
+// appear if the function has a label (for recursive)
+// RESULT: !(rec A.(L#rec B.(L#B+Q#int)+Q#int) -o rec A.(L#A+Q#int))
+fun Test( x : rec A.( L#(rec B.L#B + Q#int) + Q#int )):rec A.(L#A + Q#int) .x
+
+,
+
+// this should work
+// RESULT: !(int -o boolean -o !!int)
+fun A( x : int , y : boolean ) : !!int .x
+
+,
+
+// this should work
+// RESULT: !(rec A.(A) -o rec A.(rec B.(A)))
+fun Test( x : rec A.A ):(rec A.rec B.A).x
+
+}

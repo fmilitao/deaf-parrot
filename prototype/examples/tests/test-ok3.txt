@@ -1,0 +1,16 @@
+//OK false
+//OK !boolean
+
+// tests threading of capabilities through forall functions
+let f1 = <t>fun(x: ref t :: rw t int ).0 in
+	open <t,x> = new {} in
+        x := 2; // switch to int
+		f1[t] x; // ok to call
+        x := false;
+        let tmp = !x in
+            x := 1;
+            delete x;
+            tmp
+        end
+    end
+end

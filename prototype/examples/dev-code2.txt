@@ -1,0 +1,9 @@
+
+
+<t>fun( x : ref t :: (rw t int => rw t boolean ; none) ).
+	let z = x in
+		focus t;
+		z := false;
+		//defocus;
+		0
+	end

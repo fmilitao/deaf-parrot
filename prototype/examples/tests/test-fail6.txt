@@ -1,0 +1,10 @@
+//OK Function Value
+//FAIL Incompatible branch results: !(My#!int) vs !int
+
+fun( x : A#int + B#int ).(
+	case x of
+	  A#a -> My#123
+	| B#b -> 1
+	| C#c -> 0
+	end)
+

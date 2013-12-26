@@ -1,0 +1,16 @@
+//OK Function Value
+//FAIL Label "A" is not free in [!int,A]
+
+
+// Testing of capture avoiding substitution.
+
+// This is legal because 'A' is bounded, we can rename it to avoid capture.
+fun CapAvoid( x : exists B.( l#B + u#int ))
+	: exists B.exists C.( l#C + u#B ) // return type used to ensure correctness
+	. <int:B,x>
+
+;
+
+// This is illegal because 'A' is not free in 'x'
+// Thus, subst. int for A would wrongly capture A.
+<A>fun( x : A).<int:A,{0,x}>

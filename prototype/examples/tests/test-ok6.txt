@@ -1,0 +1,11 @@
+//OK false
+//OK !boolean
+
+let x = <t>fun( x : ref t :: rw t int ).( x := false ) in
+	// FIXME: I still need to properly define parsing priorities...
+    open <t,y> = new 7 in
+        x[t] y;
+        0;
+        delete y
+    end
+end

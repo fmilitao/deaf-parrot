@@ -1,0 +1,22 @@
+/* WELCOME!
+
+ Dead-Parrot is a prototype implementation of our language written entirely
+ in javascript and should run directly in a modern web-browser (Google Chrome
+ preferred).
+
+ Parsing and typechecking errors should be flagged on-the-fly.
+
+ NOTES:
+  - allows C-style comments.
+  - the languages uses a few IDIOMS for convenience (see idioms example).
+  - sharing support is still EXPERIMENTAL (i.e. work in progress).
+*/
+
+import println
+import add
+
+let x = { a = 2, b = "Hello World!", c = false } in
+	println[!int] (add 40 2);
+	// functional value and application
+	fun( _ : [] ).(x.b) {}
+end

@@ -1,0 +1,11 @@
+//OK 123
+//OK !int
+
+// simplest case test
+let x = Label#123 in
+	case x of
+		Not#a -> 1
+	| Still#b -> 2
+	| Label#c -> c
+	end
+end

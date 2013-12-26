@@ -1,0 +1,57 @@
+
+// Example of encoding a type similar to Behavioral Types
+// but now using one level of indirection, through a 'this' pointer, to keep
+// the result unobstructed and having the next behavior be placed there.
+// The resulting sequential behavior:
+// setInt ; getInt ; dispose
+
+let newBehavior = fun( _ : [] ).
+	open <this,ptr> = new {} in
+    	// private state
+        open <p,field> = new {} in
+            let method = 
+        	{ // list of methods from which the behavior will be made
+             getInt = fun( _ : [] :: rw p int ).( !field ),
+             setInt = fun( y : int :: rw p [] ).( field := y ),
+             dispose = fun( _ : [] :: rw p int ).( delete field )
+    		} in
+                
+                ptr := {
+                	setInt = fun( i : int :: rw this []).
+                		let val = (method.setInt i) in
+                			ptr := {
+                				getInt = fun( _ : [] :: rw this [] ).
+                					let val = (method.getInt {} ) in
+                						ptr := {
+                							dispose = fun( _ : [] :: rw this [] ).
+                								(method.dispose {})
+                						};
+                						val
+                					end
+                			};
+                			val
+                		end
+                };
+                
+/* No need to manually write this since the idiom does it.
+                <this, ptr::rw this [ setInt:
+						int :: rw this [] -o ![] :: rw this [ getInt:
+							[] :: rw this [] -o !int :: rw this [ dispose: 
+								[] :: rw this [] -o !int :: rw this [] ] ] ]>
+*/
+					ptr
+            end
+        end
+    end
+    in
+    
+	// client code that consumes the behavior
+    open <t,x> = newBehavior {} in
+        !x.setInt 0;
+        !x.getInt {};
+        !x.dispose {};
+        delete x // note that the eval yields the old function
+        // the value is there but we have no permission to run it!
+        // the type checker blocks its use since it is no longer safe.
+    end
+end

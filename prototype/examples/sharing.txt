@@ -1,0 +1,37 @@
+
+import add
+
+typedef Alias = forall t.( ( rw t (Held#[]) => rw t (Released#int) ) 
+	(+) ( rw t (Released#int) => none ) )
+
+open <t,x> = new Held#{} in
+	share t as (Alias[t]) || (Alias[t]);
+	
+	// one alias can move to some other context
+	// for instance, masking the other alias' type
+	open <Unknown,_> =
+		let outside = fun( _ : [] :: (Alias[t])).
+			(<(Alias[t]):U,{}::(Alias[t])>) in
+				outside({})
+		end
+		in
+	
+	// so that the relation between locations is
+	// no longer statically known.
+	// manually open alternative:
+	@t (
+		focus t;
+		case !x of
+			Held#n ->
+				x := Released#42;
+				defocus // returns unit
+		| Released#n ->
+				defocus;
+				x := (add n 1);
+				// ... free to do whatever it pleases
+				delete x;
+				{} // also return unit to safely merge
+		end )
+
+	end
+end

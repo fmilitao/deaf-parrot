@@ -1,0 +1,26 @@
+//OK {Function Value,Function Value,0,Function Value,0}
+//OK [!forall A.(!((int :: A) -o (!int :: (A * none))),!forall p.(!forall X.(!((int :: (X * rw p !int)) -o (!int :: (X * rw p !int))),exists P.!P,exists TESTING.!forall X.(!(!X -o !TESTING),exists A.exists a.(!A :: rw a !A)]
+
+{ // using tuples to group several results into a single test
+// basic none
+// RESULT: !forall A.(!(int :: A -o !int :: A * none))
+<A>fun( x : int :: A ).(x::(A*none)),
+
+// some abstracted some not
+// RESULT: !forall p.(!forall X.(!(int :: X * rw p !int -o !int :: X * rw p !int)))
+<p><X>fun( x : int :: (X * rw p int) ).x,
+
+// abstracting primitive types
+<int:P,0>,
+
+// as result
+//RESULT: exists TESTING.(!forall X.(!(!X -o !TESTING)))
+<int:TESTING, <X>fun( x : !X ).0 >,
+
+// RESULT: exists A.(exists a.(!A :: rw a !A))
+open <T,x> = <int,new 0> in
+	open <t,y> = x in
+		<T:A,<t:a,!y::rw t !T>>
+	end
+end
+}

@@ -1,0 +1,6 @@
+//FAIL Invalid tuple
+//FAIL Type 'int' not tuple
+
+let [x,y] = 1 in
+	x
+end

@@ -1,0 +1,29 @@
+/*
+ * IDIOMS
+ * This examples introduces a few convenient idioms used by the prototype.  
+ */
+
+// 0. convenient type definitions
+typedef OK = int
+
+// 1. multi-argument functions, through Currying.
+let f = fun(x : int, y : boolean ).x in
+    // note the type of 'f' is "int -o boolean -o int"
+    f 2 false
+end;
+
+// 2. recursive functions, requiring name and return type.
+fun R( x : int ):OK.( R x ) ;
+
+/*
+ * 4. Capability stacking subtleties.
+ *		- manually stacking is possible by ::TYPE
+ *		- auto-stack is only used when leaving a scope by packing any location
+ *		that was previously bounded by it (on that last expression).
+ */
+open <p,x> = new 0 in
+	0::rw p int; // manually stacking
+	true // auto-stack and auto-pack.
+	// on last element, try to pack:
+	// < nloc , e :: all outstanding capabilities >
+end

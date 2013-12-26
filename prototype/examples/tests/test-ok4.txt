@@ -1,0 +1,19 @@
+//OK 0
+//OK exists w.(!int :: rw w !int)
+
+let f = 
+    fun( z :[] ).(
+        open <tx,x> = new 0 in
+            open <ty,y> = new 0 in
+                <ty,<tx,{ a = x , b = y }::rw tx int::rw ty int>>
+            end
+        end
+    )
+    in
+    open <z1,x1> = (f {}) in
+        open <z2,x2> = x1 in
+            delete (x2.a);
+            <z1:w,!(x2.b)::rw z1 int>
+        end
+    end
+end
