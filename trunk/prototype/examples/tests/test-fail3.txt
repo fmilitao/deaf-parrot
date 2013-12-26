@@ -1,0 +1,8 @@
+//OK {a=2,b=3,c=Function Value}
+//FAIL Incompatible effects on field 'c'
+
+let y = new 0 in
+    let f = fun( z : [] ).y in
+    	{a = 2, b = 3 , c = f}
+    end
+end

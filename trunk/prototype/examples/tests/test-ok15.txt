@@ -1,0 +1,11 @@
+//OK Function Value
+//OK exists testing.(!(([] :: rw testing !int) -o (![] :: rw testing !int)) :: rw testing !int)
+
+open <t,x> = 
+		open <t,x> = new 0 in
+			<t:blah,x::rw t int>
+		end
+	in
+	<t:testing,<p>fun( x : [] :: rw p int ).x [t] :: rw t int>
+end
+

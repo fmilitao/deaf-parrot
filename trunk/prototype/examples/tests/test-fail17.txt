@@ -1,0 +1,16 @@
+//FAIL Invalid delete
+//FAIL Missing capability t
+
+/* This test shows how we can have multiple capabilities to the
+ * same location (i.e. such type is allow) but in practice such
+ * function will be impossible to use and just leave a useless
+ * linear that cannot be dropped.
+ */
+open <t,x> = new 0 in
+	let f = fun( _ : [] :: rw t int ).( delete x; delete x; 0 ) in
+		// Impossible to use file since there exists a single capability to
+		// each individual location, therefore although the function is valid
+		// it's value can never be used.
+		f {}
+	end
+end

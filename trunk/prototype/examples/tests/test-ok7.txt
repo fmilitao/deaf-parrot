@@ -1,0 +1,12 @@
+//OK 77
+//OK int
+
+// simple subtyping test of records:
+let f = fun( x : ![ a : !int , b : !int , c : ![ d : !int ] ]).true in
+	// ok to use larger records than needed (extra is pure, though)
+	f {a=3,b=2,c={d=2,e=2,x=2},w=2}
+end;
+
+let f = fun( x : !(int -o int) ).(x 77) in
+    f fun(y:int).y
+end

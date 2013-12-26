@@ -1,0 +1,4 @@
+//OK Function Value
+//OK !forall p.(!forall X.(!((int :: (X * rw p !int)) -o (!int :: (X * rw p !int)))
+
+<p><X>fun( x : int :: (X * rw p int) ).x

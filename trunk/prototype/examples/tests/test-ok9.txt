@@ -1,0 +1,25 @@
+//OK {done,Label#0,Dead Cell}
+//OK [!string,!(Label#!int),exists dead.!(ref dead)]
+
+let f = fun( x : exists t.( ref t ) ).x in
+	let g = fun( y : exists g.ref g).(f y) in
+		g
+	end
+end;
+
+let f = fun( x : forall t.( ref t ) ).x in
+	let g = fun( y : forall g.ref g).(f y) in
+		g
+	end
+end;
+
+let f = fun( x : forall t.( ref t :: rw t (exists g.ref g)) ).x in
+	let g = fun( y : forall g.( ref g:: rw g (exists t.ref t)) ).(f y) in
+		g
+	end
+end;
+
+open <t,x> = new 0 in
+	delete x;
+	{ "done", Label#0,<t:dead,x>}
+end

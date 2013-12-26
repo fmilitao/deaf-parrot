@@ -1,0 +1,40 @@
+
+// Note that execution will obviously crash since this code contains
+// and infinite recursion (i.e. reaches max call stack size).
+
+import add
+
+typedef Retry = forall p.rec X.( ( rw p (Held#[]) => rw p (Held#[]) ; X )
+	(+) ( rw p (Released#int) => none ) )
+
+typedef OneUse = forall p.( rw p (Held#[]) => rw p (Released#int) )
+
+open <u,meh> = new {} in
+
+open <t,x> = new Held#{} in
+	share t as (Retry[t]) || (OneUse[t]);
+	
+	meh := <(OneUse[t]):What,{}::(OneUse[t])>;
+	
+	fun Y( _ : []::(Retry[t]) ):int.(
+		@t (
+		focus t;
+		case !x of
+			Held#n ->
+				x := Held#n;
+				defocus; // retry, did not consume shared type!
+				Y {}// recursion point
+		|	Released#n -> // recovers
+				defocus;
+				x := (add n 1);
+				// ...
+				x := (add !x 1);
+				//...
+				delete x
+		end)
+	) {};
+	
+	delete meh
+end
+
+end

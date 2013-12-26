@@ -1,0 +1,13 @@
+//OK Reference Cell
+//OK exists a.exists b.(!(ref b) :: rw b !int)
+
+open <tx,x> = new 0 in
+    open <ty,y> = new 0 in
+        let s = 2 in s end;
+        !x;
+        y := <tx:a, <tx:b, (x::rw tx int) >>;
+        y;
+        0;
+        delete y
+    end
+end

@@ -1,0 +1,9 @@
+//OK Function Value
+//FAIL Fix-point reached after 2 unfolds
+
+// this should fail gracefully
+fun( y : !(rec A.rec B.A) ).
+	case y of
+		asd#n -> 0
+	end
+

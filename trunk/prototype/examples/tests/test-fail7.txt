@@ -1,0 +1,4 @@
+//FAIL Maximum call stack size exceeded
+//OK !int
+
+(fun EternalLoop(x:int):!int. (EternalLoop x)) 1

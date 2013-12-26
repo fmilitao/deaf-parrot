@@ -1,0 +1,11 @@
+//FAIL Invalid field 'f' for record
+//FAIL Invalid field selection 'f' for 'ref lx'
+
+open <ly,y> = new false in
+	open <lx,x> = new { f = y , g = 1 } in
+	    !(!x.f) ; 
+		!x.f := { a = 2 }; 
+		!(!x.f).a ;
+		!(x.f).a
+	end
+end

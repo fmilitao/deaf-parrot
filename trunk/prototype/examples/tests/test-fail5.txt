@@ -1,0 +1,7 @@
+//FAIL No matching branch for U
+//FAIL Missing branch for U
+
+case U#3 of
+  A#f -> f
+| B#g -> g
+end

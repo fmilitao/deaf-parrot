@@ -1,0 +1,4 @@
+//OK false
+//FAIL Invalid call: expecting 'int' got '!boolean'
+
+(<X>fun( x : X ).x)[int] false

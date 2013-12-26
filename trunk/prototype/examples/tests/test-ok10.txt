@@ -1,0 +1,7 @@
+//OK 2
+//OK !int
+
+// simplest tuple test
+let [x,y,z] = {1,2,3} in
+	y
+end

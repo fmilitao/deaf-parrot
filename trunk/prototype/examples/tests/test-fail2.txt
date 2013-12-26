@@ -1,0 +1,11 @@
+//FAIL Invalid delete
+//FAIL No capability to 'tx'
+
+open <tx,x> = new 0 in
+    let y = fun( z : ref tx).(delete x) in
+        0;
+        y x
+    end;
+    0;
+    delete x // invalid!
+end

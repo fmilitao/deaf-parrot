@@ -1,0 +1,66 @@
+//OK 1
+//OK exists RR.exists LL.(int :: (RR * LL))
+
+typedef addType = forall T.forall t.( [addBoth : [] :: rw t [] -o int :: T] )
+typedef initRType = forall T.forall t.( [initRight: int :: rw t [] -o [] :: rw t (addType[T][t])] )
+typedef initLType = forall T.forall t.( [initLeft: int :: rw t [] -o [] :: rw t (initRType[T][t])] )
+typedef Behavioral = forall T.exists t.( ref t :: rw t (initLType[T][t]) )
+
+// typestate pair object
+let newPair = fun( _ : [] ).
+	open <pl,l> = new {} in
+	open <pr,r> = new {} in
+		<rw pl []: EL, // Empty Left
+		<rw pr []: ER, // Empty Right
+		<rw pl int : L, // Left
+		<rw pr int : R, // Right
+		{
+			initL = fun( i : int :: rw pl [] ).( l := i ),
+			initR = fun( i : int :: rw pr [] ).( r := i ),
+			sum = fun( _ : [] :: ( rw pl int * rw pr int ) ). !l, // FIXME needs basic addition, WAS !l+!r
+			destroy = fun ( _ : [] :: ( rw pl int * rw pr int ) ).( delete l; delete r ) 
+		}:: ( rw pl [] * rw pr [] )
+		>>>>
+	end
+	end
+	in
+
+	// behavioral wrapper
+	open <EL,o0> = newPair({}) in
+	open <ER,o1> = o0 in
+	open <L,o2> = o1 in
+	open <R,o> = o2 in
+		let behavioral = // the behavioral version of pair
+			open <self,this> = new {} in // 'this' pointer to store behavior
+				this := { // tags used for readability
+					initLeft = fun( i : int :: rw self [] ).
+						let result = o.initL(i) in
+							// set the next behavior
+							this := { initRight = fun( i : int :: rw self [] ).
+								let result = o.initR(i) in
+									this := { // note that it returns the captured capability
+										addBoth =  fun( _ : [] :: rw self [] ). 
+										( delete this ; o.sum({}) ) 
+									}; result end
+							}; result end
+				};
+			
+			// the following works due to idioms:
+			// this
+			// but explicitly also works:
+			< self : ptr, this :: (rw self (initLType[R*L][self])) >
+			end
+			in
+			let f = <T>fun( o : Behavioral[T] ).( 
+				open <ind,ptr> = o in
+					!ptr.initLeft(1);
+					!ptr.initRight(2);
+					!ptr.addBoth({})
+				end)
+			in
+				< R:RR, < L:LL, f[R*L] behavioral::(R*L) > >
+			end
+		end
+	end end end end
+end
+

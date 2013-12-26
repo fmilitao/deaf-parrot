@@ -1,0 +1,23 @@
+//OK Function Value
+//OK exists IN.exists OK.(!((![] :: OK) -o (!int :: OK)) :: IN)
+
+typedef EMPT = forall p.( rw p ![] )
+typedef ELEM = rec X.forall p.( rw p (N#(exists q.( (!ref q) :: (X[q]) ) )) )
+
+let newStack =
+	open <h,head> = new {} in
+		<EMPT[h]:IN,
+		<ELEM[h]:OK,
+		(fun( e : ![] :: ( ELEM[h] ) ).
+				open <n,next> = new !head in
+					head := N#(<n:nxt,next::( ELEM[n]) >);
+					0
+				end
+		) :: rw h ![] >>
+	end
+	in
+	// very confusing bug on where the equals is failing...
+	newStack
+	// should yield the type:
+	// exists IN.exists OK.(( ![] :: OK -o !int :: OK ) :: IN)
+end

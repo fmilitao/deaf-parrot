@@ -1,0 +1,42 @@
+
+// Testing delayed type application.
+// enables types to have pending forall applications that are only later
+// resolved to an actual type.
+
+// non-delayed, immediate apply.
+typedef Test1 = forall p.( (forall q.q)[p])
+
+// delayed application.
+// carries pending type application until an unfold solves the type variable.
+typedef Test2 = rec X.forall p.( exists q.( X[q] ) )
+
+typedef EMPT = forall p.( rw p (E#[]) )
+typedef ELEM = forall T.rec X.
+	forall p.( rw p (N#[T,exists q.( ref q :: (EMPT[q] (+) X[q]) )] ))
+
+typedef Y = rec X.forall p.( ref p :: rw p (exists q.(X[q])) )
+
+// This is OK because 'X' variable and 'X' id are stored differently
+<X>(fun( X : X).X);
+
+<t>fun( x : Y[t] ).
+	open <w,y> = !x in
+		!y // FIXME this is a HUGE mess..., unclear where unFold is needed, etc.
+		// MESSY MESSY... NOT COOL
+		//delete x;
+		//delete y
+	end
+
+/*
+
+typedef BUGGY = rec X.forall p.( [int,!ref p, exists q.X[q] ] )
+
+// test equals on unfolded stuff.
+<t>fun( x : BUGGY[t] ).
+	let [a,b,c] = x in
+		open <q,y> = c in
+         <BUGGY[q],y>
+      end
+	end
+
+ */

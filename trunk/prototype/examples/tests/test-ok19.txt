@@ -1,0 +1,39 @@
+//OK {0,Function Value,Function Value,Function Value,Function Value,Function Value}
+//OK [exists A.A,!(rec A.(test#A+fail#int) -o exists R.rec A.(test#A+fail#int)),!(rec A.(a#A+b#int) -o exists YY.YY),!(rec A.(case1#A+case2#int) -o (Meh#exists R.R+Number#!int)),!(rec A.(l#A+q#int) -o exists TT.TT),!(rec A.(case1#rec A.(case1#A+case2#int)+case2#int) -o (Meh#exists R.R))]
+
+{
+
+// hides int, then hides abstraction
+// RESULT: exists A.(A)
+< exists I.!I :A, <int:I,0> >,
+
+// this should fail to replace anything otherwise it could not yield
+// a proper sum type (substitution lemma)
+// RESULT: !(rec A.(test#A+fail#int) -o exists R.(rec A.(test#A+fail#int)))
+fun( x : rec A.(test#A + fail#int) ).(
+	<test#(rec A.(test#A + fail#int)):R,x>
+),
+
+// replaces everything
+// RESULT: !(rec A.(a#A+b#int) -o exists YY.(YY))
+fun( x : rec A.(a#A + b#int) ).(
+	<(rec B.(a#B + b#int)):YY,x>
+),
+
+// RESULT: !(rec A.(case1#A+case2#int) -o Meh#exists R.(R)+Number#!int)
+fun( x : rec A.(case1#A + case2#int) ).(
+	case x of
+	  case1#n -> Meh#<(rec B.(case1#B + case2#int)):R,n>
+	| case2#n -> Number#n
+	end
+),
+
+// RESULT: !(rec A.(l#A+q#int) -o exists TT.(TT))
+fun( y : rec A.l#A+q#int ). <l#(rec B.l#B+q#int)+q#int:TT,y>,
+
+// RESULT: !(rec A.(case1#rec A.(case1#A+case2#int)+case2#int) -o Meh#exists R.(R))
+fun( x : rec A.(case1#(rec A.(case1#A + case2#int)) + case2#int) ).(
+   Meh#<(rec B.(case1#B + case2#int)):R,x>
+)
+
+}

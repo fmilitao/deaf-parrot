@@ -1,0 +1,9 @@
+//OK 0
+//OK !int
+
+open <tx,x> = new 0 in
+    let f = fun( z : ![a: int, b:int] ).x in
+    	f  {a = 1, b = 3 , c = x}
+    end;
+    delete x
+end

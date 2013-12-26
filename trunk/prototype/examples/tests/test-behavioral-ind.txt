@@ -1,0 +1,47 @@
+//OK {dispose=Function Value}
+//OK ![]
+
+let newBehavior = fun( _ : [] ).
+	open <this,ptr> = new {} in
+    	// private state
+        open <p,field> = new {} in
+            let method = 
+        	{
+    		 getInt = fun( _ : [] :: rw p int ).( !field ),
+             setInt = fun( y : int :: rw p [] ).( field := y ),
+             dispose = fun( _ : [] :: rw p int ).( delete field )
+    		} in
+                
+                ptr := {
+                	setInt = fun( i : int :: rw this []).
+                		let val = (method.setInt i) in
+                			ptr := {
+                				getInt = fun( _ : [] :: rw this [] ).
+                					let val = (method.getInt {} ) in
+                						ptr := {
+                							dispose = fun( _ : [] :: rw this [] ).
+                								(method.dispose {})
+                						};
+                						val
+                					end
+                			};
+                			val
+                		end
+                };
+                
+                <this, ptr::rw this [ setInt:
+					int :: rw this [] -o ![] :: rw this [ getInt:
+						[] :: rw this [] -o !int :: rw this [ dispose: 
+							[] :: rw this [] -o !int :: rw this [] ] ] ]>
+            end
+        end
+    end
+    in
+    
+    open <t,x> = newBehavior {} in
+        !x.setInt 0;
+        !x.getInt {};
+        !x.dispose {};
+        delete x
+    end
+end

@@ -1,0 +1,7 @@
+//OK Function Value
+//FAIL Auto-stack failure, x : TypeVariable
+
+// This fails because a linear type (x) is being
+// discarded but such type is not a bang.
+<X>fun( x : X ).0
+
