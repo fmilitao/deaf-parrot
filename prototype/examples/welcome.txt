@@ -8,7 +8,8 @@
 
  NOTES:
   - allows C-style comments.
-  - the languages uses a few IDIOMS for convenience (see idioms example).
+  - the languages uses a few (very simple) IDIOMS for convenience,
+  (see 'idioms' example file, on OLD EXAMPLES tab).
   - sharing support is still EXPERIMENTAL (i.e. work in progress).
 */
 
