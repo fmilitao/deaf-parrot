@@ -2,7 +2,7 @@
 /* FIXME: this code needs clean up and remove useless bits. */
 
 body {
-	background: #CECECE;
+	background: #A6B4A6;
 	color: black;
 	font-family: helvetica;
 	font-size: 10pt;
@@ -179,7 +179,7 @@ a:visited {
 	/*
 	border-radius: 3px;
 	*/
-	border: 1px solid #acacac;
+	border: 1px solid gray;
 	background-color: #dcdcdc;
 	box-shadow: 2px 2px 2px #888888;
 }
