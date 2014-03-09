@@ -1,6 +1,6 @@
 /* WELCOME!
 
- Dead-Parrot is a prototype implementation of our language written entirely
+ Deaf-Parrot is a prototype implementation of our language written entirely
  in javascript and should run directly in a modern web-browser (Google Chrome
  preferred).
 
