@@ -2465,8 +2465,8 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				var sum = new SumType();
 				for( var i=0; i<ast.sums.length; ++i ){
 					var tag = ast.sums[i].tag;
-					// FIXME: what if duplicated tag?
-					sum.add( tag, check( ast.sums[i].exp, env ) );
+					assert( sum.add( tag, check( ast.sums[i].exp, env ) ) ||
+							"Duplicated tag: "+tag, ast.sums[i]);
 				}
 				return sum;
 			};
@@ -3106,11 +3106,9 @@ var checkProtocolConformance = function( s, a, b, ast ){
 		error( !visitor.hasOwnProperty(i) ||
 				( 'Error @visitor, duplication: '+i ) );
 		// find witch function to call on each AST kind of node
-		// FIXME: not much benefit since they are all diff functions... FIXME FIXME
 		visitor[i] = setupAST(i);
 	}
 	
-	// FIXME: switch all to have this instead of expensive switch/case
 	var check_inner = function( ast, env ){
 		if( !visitor.hasOwnProperty( ast.kind ) ){
 			error( 'Not expecting '+ast.kind );
@@ -3124,12 +3122,11 @@ var checkProtocolConformance = function( s, a, b, ast ){
 	
 	exports.check = function(ast,typeinfo,loader){
 		// This is a hack of some sort to enable testing of the inner components
-		// of the type checker... not very pleasant trick.
+		// of the type checker... not very pleasant trick, but useful for brevity.
 		if( ast instanceof Function ){
 			ast(exports,subtypeOf,equals);
 			return null;
 		}
-		
 		
 		// stats gathering
 		var start = new Date().getTime();
