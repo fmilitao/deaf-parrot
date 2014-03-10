@@ -286,7 +286,6 @@ module('Typechecker.Components');
 			equal( subtype( t_s1, t_s2 ), false );
 			equal( subtype( t_s2, t_s1 ), false );
 			
-			
 			// FIXME type variable and location variables
 			// FIXME forall, exists, delayed app, recursive types
 			// FIXME alternative type, star type
