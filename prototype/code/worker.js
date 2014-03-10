@@ -179,6 +179,17 @@ var libLoader = function( file, ctx ){
 		return add;
 	}
 	
+	// concat: int -o int -o !int
+	if( file === 'concat' ){	
+		var add = new v.Function();
+		add.call = function(msg){
+			var tmp = new v.Function();
+			tmp.call = function(arg){ return msg+arg; }
+			return tmp;
+		};
+		return add;
+	}
+	
 	if( file === 'abort' ){
 		var abort = new v.Function();
 		abort.call = function(msg){
@@ -217,6 +228,20 @@ var libTyper = function( file, ctx ){
 				new v.FunctionType(
 					new v.PrimitiveType('int'),
 					new v.BangType(new v.PrimitiveType('int'))
+					) 
+			)
+		);
+	}
+	
+	
+	// concat: !(string -o string -o !string)
+	if( file === 'concat' ){
+		return new v.BangType(
+			new v.FunctionType(
+				new v.PrimitiveType('string'),
+				new v.FunctionType(
+					new v.PrimitiveType('string'),
+					new v.BangType(new v.PrimitiveType('string'))
 					) 
 			)
 		);

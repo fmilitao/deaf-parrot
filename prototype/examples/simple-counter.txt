@@ -2,11 +2,12 @@
 typedef N = Z#[] + NZ#int
 typedef P = NZ#int
 
+// sharing protocols
 typedef IncOnly = forall p. rec X.( rw p N => rw p P; X )
 typedef Any = forall p.( rec Y.( rw p N => rw p P ; rw p P => rw p N; Y) )
 
 open <v,value> = new Z#{} in
-	share v as (IncOnly[v]) || (Any[v]);
+	share (rw v (Z#[])) as (IncOnly[v]) || (Any[v]);
 
 	open <Unknown,_> =
 		// same trick to hide the other shared type, IncOnly[v]
@@ -19,7 +20,7 @@ open <v,value> = new Z#{} in
 		// now we must work with Any[v] without being sure of
 		// where it will be used
 		
-		focus v;
+		focus (rw v N);
 		case !value of
 			Z#_ -> value := NZ#123
 		| NZ#_ ->  value := NZ#123
@@ -28,7 +29,7 @@ open <v,value> = new Z#{} in
 		
 		// here could have some code using IncOnly[v] (directly or not)
 		
-		focus v;
+		focus (rw v P);
 		case !value of
 			NZ#b ->  value := Z#{}
 		// note that no other branches are required!

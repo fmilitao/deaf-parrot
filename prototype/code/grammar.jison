@@ -234,10 +234,17 @@ sharing :
 	nonsequence
 	| DEFOCUS
 		{ $$ = AST.makeDefocus(@$); }
-	| FOCUS ids_list
+	| FOCUS sharing_type_list
 		{ $$ = AST.makeFocus($2,@$); }
-	| SHARE ids_list AS type '||' type
+	| SHARE type_root AS type '||' type
 		{ $$ = AST.makeShare($2,$4,$6,@$); }
+	;
+
+sharing_type_list :
+	type
+		{ $$ = [$1]; }
+	| type ',' sharing_type_list
+		{ $$ = [$1].concat($3); }
 	;
 
 nonsequence :

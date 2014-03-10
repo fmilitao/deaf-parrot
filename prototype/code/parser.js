@@ -108,14 +108,14 @@ var AST = new function(){
 	this.makeTuple = function(exp,info){
 		return aux( this.kinds.TUPLE, {exp:exp}, info);
 	}
-	this.makeFocus = function(locs,info){
-		return aux( this.kinds.FOCUS, {locs:locs}, info);
+	this.makeFocus = function(ts,info){
+		return aux( this.kinds.FOCUS, {types:ts}, info);
 	}
 	this.makeDefocus = function(info){
 		return aux( this.kinds.DEFOCUS, { }, info);
 	}
-	this.makeShare = function(locs,a,b,info){
-		return aux( this.kinds.SHARE, {locs:locs,a:a,b:b}, info);
+	this.makeShare = function(t,a,b,info){
+		return aux( this.kinds.SHARE, {type:t,a:a,b:b}, info);
 	}
 	
 	// expressions
