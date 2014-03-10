@@ -878,7 +878,7 @@ var TypeChecker = (function(AST,assertF){
 						equalsTo( t1.value(), m1, t2.value(), m2 );
 				case types.RecordType: {
 					var t1s = t1.getFields();
-					var t2s = t1.getFields();
+					var t2s = t2.getFields();
 					if( Object.keys(t1s).length !== Object.keys(t2s).length )
 						return false;
 					for( var i in t1s )
@@ -965,7 +965,7 @@ var TypeChecker = (function(AST,assertF){
 					// some problem on getting the variable's definition
 					// assume it is not equal.
 					if( t1 === undefined )
-						return false;
+						return false; // FIXME: shiite...
 				}
 				if( var2 ){
 					t2 = m2.get( t2.name() );
@@ -1067,10 +1067,22 @@ var TypeChecker = (function(AST,assertF){
 			// "pure to linear" - ( t1: !A ) <: ( t2: A )
 			if ( t1.type === types.BangType && t2.type !== types.BangType )
 				return subtype( t1.inner(), m1, t2, m2 );
-	
+		
 			// all remaining rule require equal kind of type
-			if( t1.type !== t2.type )
+			if( t1.type !== t2.type ){
+				//debugger;
+				/*
+				if( t2.type === types.AlternativeType ){
+					var i2s = t2.inner();
+					// attempt to find one valid alternative
+					for( var i=0;i<i2s.length;++i){
+						if( subtype(t1,i2s[i])) // FIXME
+							return true;
+					}
+				}
+				*/
 				return false;
+			}
 			
 			//else: safe to assume same type from here on
 			switch ( t1.type ){
@@ -1099,7 +1111,7 @@ var TypeChecker = (function(AST,assertF){
 				case types.RecordType:{
 					if( !t1.isEmpty() && t2.isEmpty() )
 						return false;
-	
+
 					// all fields of t2 must be in t1
 					var t1fields = t1.getFields();
 					var t2fields = t2.getFields();				
@@ -2084,8 +2096,9 @@ var tryBang = function(ast,env,f){ // tryBang : is a closure
  */
 var checkProtocolConformance = function( s, a, b, ast ){
 	var visited = [];
-	var max_visited = 100;
+	var max_visited = 100; // safeguard against 'equals' bugs...
 	
+	// checks if state was already visited
 	var contains = function(s,a,b){
 		for( var i=0; i<visited.length; ++i ){
 			var tmp = visited[i];
@@ -2096,7 +2109,9 @@ var checkProtocolConformance = function( s, a, b, ast ){
 	}
 	
 	var sim = function(s,p){
+		// unfold recursive types, etc.
 		p = unAll(p,undefined,false,true);
+		
 		// first protocol
 		if( p.type === types.NoneType )
 			return { s : s , p : p };
@@ -2176,6 +2191,8 @@ var checkProtocolConformance = function( s, a, b, ast ){
 		var r = sim(_s,_b);
 		work.push( [r.s,_a,r.p] );
 		
+		// This is useful to safeguard against different JS implementations...
+		// more for debug than requirement of the algorhtm.
 		assert( max_visited-- > 0 || 'ERROR: MAX VISITED', ast);
 	}
 };
@@ -2723,29 +2740,27 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			return function( ast, env ){
 				var cp = check( ast.type, env );
 				
-// TODO note idiom, allows both location or cap for convenience...
+				// The following is a convenient idiom to enable both sharing
+				// a type, or just giving a location variable that will serve to
+				// search the linear typing environment for such capability.
+				// This way, there's less to type (and no need for subtype)...
 				var cap = undefined;
-					if( cp.type === types.LocationVariable ){
-						cap = env.removeNamedCap( cp.name() );
-					}else{
-						cap = env.removeCap(
-							function(c){
-									return subtypeOf(c,cp);
-								
-							} );
-					}
-					
+				if( cp.type === types.LocationVariable ){
+					cap = env.removeNamedCap( cp.name() );
+				}else{
+					cap = env.removeCap(
+						function(c){ return subtypeOf(c,cp); } );
+				}
 				
 				assert( cap !== undefined || ("No capability to '"+cp+"'"), ast );
 				
 				var left = check( ast.a, env );
 				var right = check( ast.b, env );
-				/* TODO:
-				 *  - protocol conformance, go through all possible
-				 * interleavings in composed type and ensure all alternatives
-				 * are allowed.
+				
+				/* Protocol conformance, goes through all possible "alias
+				 * interleaving" and ensure all those possibilities are considered
+				 * in both protocols.
 				 */
-
 				checkProtocolConformance(cap, left, right, ast);
 				
 				env.setCap( unAll(left, undefined, false, true) );
@@ -2760,6 +2775,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				for( var i=0; i<locs.length ; ++i ){
 					var cp = check( locs[i], env );
 					
+					// same idea as in 'SHARE'
 					var cap = undefined;
 					if( cp.type === types.LocationVariable ){
 						cap = env.removeNamedCap( cp.name() );
@@ -2773,7 +2789,8 @@ var checkProtocolConformance = function( s, a, b, ast ){
 							} );
 					}
 					
-					// ...
+					// if failed to find this one, continue to try on the next of
+					// the list given on 'focus'.
 					if( cap === undefined )
 						continue;
 				
@@ -2781,7 +2798,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 					return new BangType(new RecordType());
 				}
 				
-				assert( cap !== undefined || ("Failed to match capability to focus on"), ast );
+				assert( cap !== undefined || ("Focus failed to find capability"), ast );
 			};
 			
 			case AST.kinds.DEFOCUS: 
@@ -3106,6 +3123,14 @@ var checkProtocolConformance = function( s, a, b, ast ){
 	var typedefs;
 	
 	exports.check = function(ast,typeinfo,loader){
+		// This is a hack of some sort to enable testing of the inner components
+		// of the type checker... not very pleasant trick.
+		if( ast instanceof Function ){
+			ast(exports,subtypeOf,equals);
+			return null;
+		}
+		
+		
 		// stats gathering
 		var start = new Date().getTime();
 		type_info = [];

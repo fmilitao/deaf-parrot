@@ -1,91 +1,30 @@
 //FIXME PLACE HOLDER
 
-// Stack example.
-// This prototype implementation uses some additional annotations to
-// open alternatives and to manually stack capabilities.
+// Shared Stack example.
+// The stack implementation is in the Old Examples tab. In here we assume such
+// type and proceed to share it.
 
 import println
 
-typedef EMPT = forall p.( rw p !(E#[]) )
-typedef ELEM = forall T.rec X.forall p.( rw p (N#[T,exists q.( (!ref q) :: (EMPT[q] (+) X[q]) )] ))
+typedef Stack = forall T.( [] -o (exists E.exists NE.(![
+	push : T :: ( E (+) NE ) -o [] :: NE,
+	pop : [] :: NE -o T :: ( E (+) NE ),
+	isEmpty : [] :: ( E (+) NE ) -o  Empty#([]::E) + NonEmpty#([]::NE),
+	del : [] :: E -o [] ] :: E)) )
+	
+// Sharing protocols
+typedef P = forall NE.forall E.( ( NE (+) E ) => NE ; ( rec X.( NE => NE ; X ) ) )
 
-typedef AUX = forall E.forall NE.![
-	pop : [] :: NE -o int :: ( E (+) NE ),
-	isEmpty : [] :: ( NE (+) E ) -o Empty#([]::E) + NonEmpty#([]::NE) ]
-
-let newStack = <T>fun( _ : [] ).
-	open <h,head> = new E#{} in
-		<EMPT[h]:E,	// Empty Stack
-		<ELEM[T][h]:NE, // NonEmpty Stack
-		{
-		
-			push = fun( e : T :: ( EMPT[h] (+) ELEM[T][h] ) ).
-				@h // open alternative for location 'h'
-				// by reading the contents of head, it will require
-				// to break down the alternative into its sub-cases 
-				open <n,next> = new !head in
-					// but we can always stack with more alternatives
-					// than we have, since that just weakens the type
-					head := N#{ e , <n,next::(EMPT[n] (+) ELEM[T][n])> }
-				end,
-
-			pop = fun( _ : [] :: ( ELEM[T][h] ) ).
-				case !head of
-					N#a ->
-						let [e,n] = a in
-							open <t,ptr> = n in
-								@t (
-								head := !ptr;
-								delete ptr );
-								e
-							end
-						end
-				end,
-			
-			isEmpty = fun( _ : [] :: ( EMPT[h] (+) ELEM[T][h] ) ).
-				@h // opens alternative
-				case !head of
-					E#v ->
-						head := E#v;
-						Empty#({}::(EMPT[h]))
-				|	N#n ->
-						head := N#n;
-						NonEmpty#({}::(ELEM[T][h]))
-				end,
-				
-			del = fun( _ : [] :: (EMPT[h]) ).
-				( delete head ; {} )
-			
-		} :: rw h !(E#[]) >>
-	end
-	in
-	// client code
-	let s1 = newStack[int] {} in
+fun( newStack : Stack ).
+	let s1 = (newStack[int]) {} in
 		open <E,s2> = s1 in
-		open <NE,stack> = s2 in
-			let remAll = fun Rec( s : (AUX[E][NE]) :: ( NE (+) E ) ) : ( [] :: E ).
-				case s.isEmpty({}) of
-					Empty#n -> {}
-				| NonEmpty#n ->
-						println[int](s.pop({}));
-						Rec( s )
-				end
-				in
-				stack.push(12);
-				stack.push(34);
-				stack.push(56);
-				// intentionally drop '56'
-				stack.pop({});
-				// uncertain state E (+) NE
-				// case analysis of stack's state
-				case stack.isEmpty({}) of
-					Empty#n -> {} // if it were empty
-				| NonEmpty#n -> remAll( stack )
-				end;
-				stack.del({});
-				"all done."
-			end
+			open <NE,stack> = s2 in 
+				// initial sharing
+				share E as (P[NE][E]) || (P[NE][E]);
+				// continued sharing...
+				share (P[NE][E]) as (P[NE][E]) || (P[NE][E]);
+				0
+				//TODO
 			end
 		end
 	end
-end
