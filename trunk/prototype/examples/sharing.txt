@@ -1,11 +1,15 @@
 
 import add
 
-typedef Alias = forall t.( ( rw t (Held#[]) => rw t (Released#int) ) 
-	(+) ( rw t (Released#int) => none ) )
+// useful states
+typedef H = forall t.( rw t (Held#[]) )
+typedef F = forall t.( rw t (Free#int) )
+
+// sharing protocol
+typedef Alias = forall t.( ( (H[t]) => (F[t]) ) (+) ( (F[t]) => none ) )
 
 open <t,x> = new Held#{} in
-	share t as (Alias[t]) || (Alias[t]);
+	share (H[t]) as (Alias[t]) || (Alias[t]);
 	
 	// one alias can move to some other context
 	// for instance, masking the other alias' type
@@ -20,12 +24,12 @@ open <t,x> = new Held#{} in
 	// no longer statically known.
 	// manually open alternative:
 	@t (
-		focus t;
+		focus (H[t]), (F[t]);
 		case !x of
 			Held#n ->
-				x := Released#42;
+				x := Free#42;
 				defocus // returns unit
-		| Released#n ->
+		| Free#n ->
 				defocus;
 				x := (add n 1);
 				// ... free to do whatever it pleases

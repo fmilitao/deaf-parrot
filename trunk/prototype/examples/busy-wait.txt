@@ -1,30 +1,36 @@
 
 // Note that execution will obviously crash since this code contains
-// and infinite recursion (i.e. reaches max call stack size).
+// and infinite loop (i.e. reaches max call stack size, due to recursion).
 
 import add
 
-typedef Retry = forall p.rec X.( ( rw p (Held#[]) => rw p (Held#[]) ; X )
-	(+) ( rw p (Released#int) => none ) )
+// useful states
+typedef H = forall t.( rw t (Held#[]) )
+typedef F = forall t.( rw t (Free#int) )
 
-typedef OneUse = forall p.( rw p (Held#[]) => rw p (Released#int) )
+// sharing protocols
+typedef Retry = forall p.rec X.( ( (H[p]) => (H[p]) ; X )
+	(+) ( (F[p]) => none ) )
 
+typedef OneUse = forall p.( (H[p]) => (F[p]) )
+
+// program code
 open <u,meh> = new {} in
 
 open <t,x> = new Held#{} in
-	share t as (Retry[t]) || (OneUse[t]);
+	share (H[t]) as (Retry[t]) || (OneUse[t]);
 	
 	meh := <(OneUse[t]):What,{}::(OneUse[t])>;
 	
 	fun Y( _ : []::(Retry[t]) ):int.(
 		@t (
-		focus t;
+		focus (H[t]),(F[t]);
 		case !x of
 			Held#n ->
 				x := Held#n;
 				defocus; // retry, did not consume shared type!
 				Y {}// recursion point
-		|	Released#n -> // recovers
+		|	Free#n -> // recovers
 				defocus;
 				x := (add n 1);
 				// ...

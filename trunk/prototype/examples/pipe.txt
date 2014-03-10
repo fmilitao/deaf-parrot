@@ -1,9 +1,13 @@
+// Shared pipe example.
+// Note that we are using an idiom for focus/share that simply lists the
+// location that we want to focus/share, instead of having to list types.
 
 import abort
 import println
 
 // head node
-typedef H = rec X.forall p.( ( rw p !(Empty#[]) => rw p !(Empty#[]) ; (X[p]) ) (+)
+typedef H = rec X.forall p.(
+			( rw p !(Empty#[]) => rw p !(Empty#[]) ; (X[p]) ) (+)
 			( rw p (Closed#[]) => none ) (+) 
 			( rw p (Node#[int,exists q.(!ref q :: (X[q]) )]) => none ) )
 
@@ -13,42 +17,42 @@ typedef T = forall p.( rw p !(Empty#[]) =>
 
 let newPipe = fun( _ : [] ).
 	// initial node to be shared:
-	open <nloc,node> = new Empty#{} in
-		share nloc as (H[nloc]) || (T[nloc]);
-	open <hloc,head> = new <nloc,node :: (H[nloc])> in
-	open <tloc,tail> = new <nloc,node :: (T[nloc])> in
-		< rw hloc (exists p.(!ref p :: (H[p]))) : Consumer,
-		< rw tloc (exists p.(!ref p :: (T[p]))) : Producer,
+	open <n,node> = new Empty#{} in
+		share n as (H[n]) || (T[n]);
+	open <h,head> = new <n,node :: (H[n])> in
+	open <t,tail> = new <n,node :: (T[n])> in
+		< rw h (exists p.(!ref p :: (H[p]))) : Consumer,
+		< rw t (exists p.(!ref p :: (T[p]))) : Producer,
 		{
-		put = fun( e : int :: rw tloc (exists p.( !ref p :: (T[p]) )) ).
-			open <l1,last> = new Empty#{} in
-				open <l2,oldlast> = !tail in
-					focus l2;
-						share l1 as (H[l1]) || (T[l1]);
-						oldlast := Node#{ e , <l1,last :: (H[l1])> };
+		put = fun( e : int :: rw t (exists p.( !ref p :: (T[p]) )) ).
+			open <l,last> = new Empty#{} in
+				open <o,oldlast> = !tail in
+					focus o;
+						share l as (H[l]) || (T[l]);
+						oldlast := Node#{ e , <l,last :: (H[l])> };
 					defocus;
-					tail := <l1,last :: (T[l1])>
+					tail := <l,last :: (T[l])>
 				end
 			end,
 		
-		close = fun( _ : [] :: rw tloc (exists p.(!ref p :: (T[p]) )) ).
-			open <l1,last> = !tail in
+		close = fun( _ : [] :: rw t (exists p.(!ref p :: (T[p]) )) ).
+			open <l,last> = !tail in
 				delete tail;
-				focus l1;
+				focus l;
 					last := Closed#{};
 				defocus
 			end,
 
-		tryTake = fun( _ : [] :: rw hloc (exists p.(!ref p :: (H[p]) )) ).
-			open <f1,first> = !head in
-				@f1
-				(focus f1;
+		tryTake = fun( _ : [] :: rw h (exists p.(!ref p :: (H[p]) )) ).
+			open <f,first> = !head in
+				@f
+				(focus f;
 				case !first of
 						Empty#_ -> // still empty, no need to change anything
 							first := Empty#{};
 							defocus;
-							head := <f1,first :: (H[f1])>; // reassign (content was/is linear type)
-							NoResult#({}::rw hloc (exists p.(!ref p :: (H[p]))))
+							head := <f,first :: (H[f])>; // reassign (content was/is linear type)
+							NoResult#({}::rw h (exists p.(!ref p :: (H[p]))))
 				|		Closed#_ -> // end of pipe, pipe closed
 							delete first;
 							delete head;
@@ -60,11 +64,11 @@ let newPipe = fun( _ : [] ).
 								// could be further below
 							let [element, next] = n in
 								head := next; // 'next' is a packed type
-								Result#(element :: rw hloc (exists p.(!ref p :: (H[p]))) )
+								Result#(element :: rw h (exists p.(!ref p :: (H[p]))) )
 							end
 				end)
 			end
-		}::( (rw hloc (exists p.(!ref p :: (H[p])))) * (rw tloc (exists p.(!ref p :: (T[p])))) )
+		}::( (rw h (exists p.(!ref p :: (H[p])))) * (rw t (exists p.(!ref p :: (T[p])))) )
 		>>
 	end
 	end

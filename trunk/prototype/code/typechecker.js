@@ -2721,11 +2721,22 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			
 			case AST.kinds.SHARE: 
 			return function( ast, env ){
-				var locs = ast.locs;
-				// FIXME assuming just one
-				var cap = env.removeNamedCap( locs[0] );
+				var cp = check( ast.type, env );
 				
-				assert( cap !== undefined || ("No capability to '"+locs[0]+"'"), ast );
+// TODO note idiom, allows both location or cap for convenience...
+				var cap = undefined;
+					if( cp.type === types.LocationVariable ){
+						cap = env.removeNamedCap( cp.name() );
+					}else{
+						cap = env.removeCap(
+							function(c){
+									return subtypeOf(c,cp);
+								
+							} );
+					}
+					
+				
+				assert( cap !== undefined || ("No capability to '"+cp+"'"), ast );
 				
 				var left = check( ast.a, env );
 				var right = check( ast.b, env );
@@ -2745,16 +2756,32 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			
 			case AST.kinds.FOCUS: 
 			return function( ast, env ){
-				var locs = ast.locs;
+				var locs = ast.types;
+				for( var i=0; i<locs.length ; ++i ){
+					var cp = check( locs[i], env );
+					
+					var cap = undefined;
+					if( cp.type === types.LocationVariable ){
+						cap = env.removeNamedCap( cp.name() );
+					}else{
+						cap = env.removeCap(
+							function(c){
+								if( c.type === types.RelyType ){
+									return subtypeOf(c.rely(),cp);
+								}
+								return false;
+							} );
+					}
+					
+					// ...
+					if( cap === undefined )
+						continue;
 				
-				var cap = env.removeNamedCap( locs[0] );
+					env.focus( cap );	
+					return new BangType(new RecordType());
+				}
 				
-				assert( cap !== undefined || ("No capability to '"+locs[0]+"'"), ast );
-				assert( cap.type === types.RelyType || ('Expecting RelyType, got '+cap), ast);
-				
-				env.focus( cap );
-				
-				return new BangType(new RecordType());
+				assert( cap !== undefined || ("Failed to match capability to focus on"), ast );
 			};
 			
 			case AST.kinds.DEFOCUS: 

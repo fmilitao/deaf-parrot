@@ -1,16 +1,8 @@
-#welcome.txt
-#idioms.txt
-#pair.txt
-#typestate.txt
-#behavioral.txt
-#behavioral-ind.txt
-#behavioral-typestate.txt
-#list-adt.txt
-shared-stack.txt
 # sharing examples
 sharing.txt
 busy-wait.txt
 simple-counter.txt
 pipe.txt
+shared-stack.txt
 monotonic-tree.txt
 spaghetti-stack.txt
