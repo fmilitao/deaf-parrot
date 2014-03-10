@@ -552,11 +552,35 @@ module('Typechecker.Components');
 			equal( subtype( t_var2, t_var3 ), false );			
 			equal( subtype( t_var3, t_var2 ), false );
 			
-			// forall, exists
-			// FIXME forall, exists
-			// FIXME delayed app, recursive types
-			// FIXME alternative type X <: X  (+) Y, etc.
+			// forall and exists
+			var t_f1 = new t.ForallType(new t.TypeVariable('X'),new t.TypeVariable('X'));
+			var t_f2 = new t.ForallType(new t.TypeVariable('Y'),new t.TypeVariable('Y'));
+			var t_f3 = new t.ForallType(new t.TypeVariable('Z'),new t.BangType(new t.TypeVariable('Z')));
+			equal( subtype( t_f1, t_f2 ), true );
+			equal( subtype( t_f1, t_f3 ), false );
+			//equal( subtype( t_f3, t_f1 ), false ); //FIXME bug
 			
+			var t_e1 = new t.ExistsType(new t.TypeVariable('X'),new t.TypeVariable('X'));
+			var t_e2 = new t.ExistsType(new t.TypeVariable('Y'),new t.TypeVariable('Y'));
+			var t_e3 = new t.ExistsType(new t.TypeVariable('Z'),new t.BangType(new t.TypeVariable('Z')));
+			equal( subtype( t_e1, t_e2 ), true );
+			equal( subtype( t_e1, t_e3 ), false );
+			//equal( subtype( t_e3, t_e1 ), false ); //FIXME bug
+			
+			var t_alt2 = new t.AlternativeType();
+			t_alt2.add(new t.TypeVariable('X'));
+			t_alt2.add(new t.TypeVariable('Z'));
+			t_alt2.add(new t.TypeVariable('Y'));
+			
+			var t_alt1 = new t.AlternativeType();
+			t_alt1.add(new t.TypeVariable('X'));
+			t_alt1.add(new t.TypeVariable('Z'));
+
+			//equal( subtype(t_alt1,t_alt2), true); //FIXME bug
+			equal( subtype(t_alt2,t_alt1), false);
+			//equal( subtype(new t.TypeVariable('X'), t_alt1), true ); // FIXME bug X <: X  (+) Y
+			
+			// FIXME delayed app, recursive types
 		} );
 	});
 

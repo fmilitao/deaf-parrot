@@ -950,7 +950,8 @@ var TypeChecker = (function(AST,assertF){
 		var table = new Table();
 
 		var subtype = function( t1, m1, t2, m2 ){
-	
+
+			// FIXME this check should not be needed...	
 			if( t1 === t2 || equals(t1,t2) ) // if exactly the same thing
 				return true;
 				
@@ -1136,7 +1137,7 @@ var TypeChecker = (function(AST,assertF){
 				case types.StackedType:
 					return subtype( t1.left(), m1, t2.left(), m2 ) &&
 						subtype( t1.right(), m1, t2.right(), m2 );
-				case types.AlternativeType:
+				case types.AlternativeType: //FIXME this should move...
 				case types.StarType:{
 					var i1s = t1.inner();
 					var i2s = t2.inner();
@@ -2420,7 +2421,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				assert( type.type === types.LocationVariable ||
 					('Cannot alt-open '+type), ast.type );
 				
-				// TODO: should be search CapType( equals )
+				// FIXME also allow to give a type, not just a location.
 				var cap = env.removeNamedCap( type.name() );
 				
 				assert( cap !== undefined || ('Missing cap: '+cap), ast.type );
