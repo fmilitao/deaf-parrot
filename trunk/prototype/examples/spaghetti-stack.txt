@@ -1,10 +1,76 @@
-//FIXME PLACEHOLDER
-// Place holder for return of monotonic tree example
+//FIXME Spaghetti stack
 
-/*
-- monotonic
-	( Raw => Ready ; RP (+) RP ) || ...
-	typedef RP = rec X.( Ready => Ready ; X )
-*/
+let newSpaghetti = fun( _ : [] ).
+ // the following is a private function that is not visible to clients
+ let make = fun( up : exists q.(ref q :: NodeP[q] (+) NilP[q]) ).
+  open<h,head> = new up in
+   {
 
-"incomplete"
+    push = fun( i : int :: rw h exists q.(ref q :: NodeP[q] (+) NilP[q]) ).
+		open <t,n> = new Node#[i,!head] in
+			// it is always possible to share a node alone
+			share (rw t Node#[int,exists q.(ref q :: NodeP[q])]) 
+				as NodeP[t] || none;
+			// restores same head type as in argument
+			head := < t, n ::NodeP[t] (+) NilP{t] >
+		end,
+
+    pop = fun( _ : [] 
+    						:: rw h exists q.(ref q :: NodeP[q] (+) NilP[q]) ).
+		open <t,n> = !head in
+			focus Node[t], Nil[t];
+			case !n of
+				Nil#x $->$
+					n := Nil#x;
+					defocus;
+					head := < t, n ::NodeP[t] (+) NilP{t] > ;
+					End#{}
+			| Node#[e,m] $->$
+					// following open is necessary only to disambiguate what is shared
+					open <tt,nn> = m in
+						focus Node[tt], Nil[tt];
+						case !nn of
+						Node#x $->$
+							nn := Node#x;
+							defocus;
+							share NodeP[tt] as NodeP[tt] || NodeP[tt];
+							head := <tt,nn ::NodeP[tt] (+) NilP{tt]>
+						| Nil#y $->$
+							n := Nil#y;
+							defocus;
+							share NilP[tt] as NilP[tt] || NilP[tt];
+							head := < tt, nn ::NodeP[tt] (+) NilP{tt] >
+						end;
+						n := Node#[e,< tt, nn :: NodeP[tt] (+) NilP{tt] >];
+						defocus
+					end;
+					Result#e
+			end
+		end,
+				
+	clone = fun( _ : []
+					:: rw h exists q.( ref q :: NodeP[q] (+) NilP[q] ) ).
+		open <t,n> = !head in
+			focus Node[t], Nil[t];
+			case !n of
+				Node#x $->$
+					n := Node#x;
+					defocus;
+					share NodeP[t] as NodeP[t] || NodeP[t];
+					make ( < t, n :: NodeP[t] (+) NilP{t] > )
+					head := < t, n :: NodeP[t] (+) NilP{t]>
+			| Nil#y $->$
+					n := Nil#y;
+					defocus;
+					share NilP[t] as NilP[t] || NilP[t];
+					make ( < t, n :: NodeP[t] (+) NilP{t] > );
+					head := < t, n ::NodeP[t] (+) NilP{t] >
+			end
+		end
+
+	}
+	end
+	in
+		// creates an empty stack (nil up)
+		make Nil#{}
+	end

@@ -1,10 +1,27 @@
-//FIXME
-// Place holder for return of monotonic tree example
+//FIXME adapt code and define others...
 
-/*
-- monotonic
-	( Raw => Ready ; RP (+) RP ) || ...
-	typedef RP = rec X.( Ready => Ready ; X )
-*/
-
-"incomplete"
+let init = <q>fun( v : int , n : ref q :: RawP[q] ).
+	focus Raw[q],Ready[q],Nil[q];
+	case !n of
+		Nil#_ $->$ // empty node
+			n := Nil#_
+	|	Ready#x $->$ // node was already initialized
+			n := Ready#x // restore linear content to cell
+	| Raw#x $->$
+		// un-initialize node
+		open <l,y> = x in
+		open <r,[left,right]> = y in
+			// initialize children:
+			init[l]( v, left );
+			init[r]( v, right );
+			// done
+			n := Ready#<l,<r,{v,l,r}>>
+		end
+		end
+	end;
+	defocus
+	
+	in
+//	...	
+	
+end

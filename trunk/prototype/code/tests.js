@@ -173,13 +173,13 @@ module('Typechecker.Components');
 
 			var t_rec1 = new t.RecordType();
 			t_rec1.add('a',t_int);
-			t_rec1.add('b',t_int);
+			t_rec1.add('b',t_int); // [a: int, b:int]
 			
 			var t_rec2 = new t.RecordType();
-			t_rec2.add('a',t_int);
+			t_rec2.add('a',t_int); //[a : int]
 
-			equal( equals( t_rec2, t_rec1 ), false );
-			equal( equals( t_rec1, t_rec2 ), false );
+			equal( equals( t_rec2, t_rec1 ), false ); // [a : int] <: [a: int, b:int] 
+			equal( equals( t_rec1, t_rec2 ), true ); // [a: int, b:int] <: [a : int]
 			
 			t_rec2.add('b',t_int);
 			equal( equals( t_rec2, t_rec1 ), true );
@@ -565,7 +565,7 @@ module('Typechecker.Components');
 			var t_e3 = new t.ExistsType(new t.TypeVariable('Z'),new t.BangType(new t.TypeVariable('Z')));
 			equal( subtype( t_e1, t_e2 ), true );
 			equal( subtype( t_e1, t_e3 ), false );
-			//equal( subtype( t_e3, t_e1 ), false ); //FIXME bug
+			//equal( subtype( t_e3, t_e1 ), false ); //FIXME bug infinite loop?
 			
 			var t_alt2 = new t.AlternativeType();
 			t_alt2.add(new t.TypeVariable('X'));
@@ -579,6 +579,18 @@ module('Typechecker.Components');
 			//equal( subtype(t_alt1,t_alt2), true); //FIXME bug
 			equal( subtype(t_alt2,t_alt1), false);
 			//equal( subtype(new t.TypeVariable('X'), t_alt1), true ); // FIXME bug X <: X  (+) Y
+			
+			var t_rec1 = new t.RecursiveType(new t.TypeVariable('X'),new t.BangType( new t.TypeVariable('X')));
+			var t_rec2 = new t.BangType(new t.RecursiveType(new t.TypeVariable('X'),new t.BangType( new t.TypeVariable('X'))));
+			equal( subtype(t_rec1,t_rec2), true);
+			
+			//rec X. ![ name : []] <: !(rec X. ![ name : []])
+			var tmp_rec = new t.RecordType();
+			tmp_rec.add('name',new t.RecordType());
+			t_rec1 = new t.RecursiveType(new t.TypeVariable('X'),new t.BangType(tmp_rec));
+			t_rec2 = new t.BangType( new t.RecursiveType(new t.TypeVariable('X'),new t.BangType(tmp_rec)) );
+			// perhaps counter intuitive, but this SHOULD NOT be the case!
+			equal( subtype(t_rec1,t_rec2), false);
 			
 			// FIXME delayed app, recursive types
 		} );

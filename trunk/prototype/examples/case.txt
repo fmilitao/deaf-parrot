@@ -1,0 +1,11 @@
+// example of less conservative case.
+
+<lz><lx><ly>
+fun( z : ref lz, x : ref lx, y : ref ly 
+	:: ( ( rw lz (HasX#[]) * rw lx [] ) (+) ( rw lz (HasY#[]) * rw ly [] ) ) ).
+	@lz // open location
+	case !z of
+		HasX#_ -> delete x
+	| HasY#_ -> delete y
+	end;
+	"done"
