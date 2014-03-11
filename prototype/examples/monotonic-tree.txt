@@ -1,27 +1,34 @@
 //FIXME adapt code and define others...
 
-let init = <q>fun( v : int , n : ref q :: RawP[q] ).
-	focus Raw[q],Ready[q],Nil[q];
+typedef Nil = forall q.( rw q (Nil#[]) )
+typedef Raw = forall RP.forall q.( rw q (Raw#(exists l.(exists r.( [ref l,ref r] :: ( (RP[l]) * (RP[r]) ) )))) )
+typedef Ready = forall RP.forall q.( rw q (Ready#(exists l.(exists r.( [ref l,ref r] :: ( (RP[l]) * (RP[r]) ) )))) )
+
+typedef NilP = forall q.( rec X.( (Nil[q]) => (Nil[q]); X ) )
+typedef ReadyP = rec Y.(forall q.( NilP[q] (+) (rec X.( (Ready[Y][q]) => (Ready[Y][q]) ; X ))))
+typedef RawP = rec Y.(forall q.( NilP[q] (+) ReadyP[q] (+) ( (Raw[q]) => (Ready[Y][q]) ; (ReadyP[q]) ) ))
+
+// monotonic node initialization
+<q>fun( v : int , n : ( ref q :: (RawP[q]) ) ).
+	@q
+	( focus (Raw[q]), (Ready[q]), (Nil[q]);
 	case !n of
-		Nil#_ $->$ // empty node
+		Nil#_ -> // empty node
 			n := Nil#_
-	|	Ready#x $->$ // node was already initialized
+	|	Ready#x -> // node was already initialized
 			n := Ready#x // restore linear content to cell
-	| Raw#x $->$
+	| Raw#x ->
 		// un-initialize node
 		open <l,y> = x in
-		open <r,[left,right]> = y in
+		open <r,pair> = y in
+		let [left,right] = pair in
 			// initialize children:
-			init[l]( v, left );
-			init[r]( v, right );
+			init[l] v left;
+			init[r] v right;
 			// done
 			n := Ready#<l,<r,{v,l,r}>>
 		end
 		end
+		end
 	end;
-	defocus
-	
-	in
-//	...	
-	
-end
+	defocus )
