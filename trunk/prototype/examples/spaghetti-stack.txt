@@ -1,70 +1,76 @@
 //FIXME Spaghetti stack
 
+typedef Nil = forall p.( rw p (Nil#[]) )
+typedef NilP = forall p.( rec X.( (Nil[p]) => (Nil[p]) ; X ) )
+typedef Node = forall p.( rw p (Node#[int,exists q.(ref q :: (NilP[q] (+) NodeP[q]))] ) )
+typedef NodeP = forall p.( rec X.( (Node[p]) => (Node[p]); X )) 
+
 let newSpaghetti = fun( _ : [] ).
  // the following is a private function that is not visible to clients
  let make = fun( up : exists q.(ref q :: NodeP[q] (+) NilP[q]) ).
+ // FIXME needs to be recursive
   open<h,head> = new up in
    {
 
-    push = fun( i : int :: rw h exists q.(ref q :: NodeP[q] (+) NilP[q]) ).
-		open <t,n> = new Node#[i,!head] in
+    push = fun( i : int :: rw h (exists q.(ref q :: NodeP[q] (+) NilP[q])) ).
+		open <t,n> = new Node#{i,!head} in
 			// it is always possible to share a node alone
-			share (rw t Node#[int,exists q.(ref q :: NodeP[q])]) 
-				as NodeP[t] || none;
+			share (rw t (Node#[int,exists q.(ref q :: NodeP[q])])) 
+				as (NodeP[t]) || none;
 			// restores same head type as in argument
-			head := < t, n ::NodeP[t] (+) NilP{t] >
+			head := < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) >
 		end,
 
-    pop = fun( _ : [] 
-    						:: rw h exists q.(ref q :: NodeP[q] (+) NilP[q]) ).
+    pop = fun( _ : [] :: rw h (exists q.(ref q :: NodeP[q] (+) NilP[q])) ).
 		open <t,n> = !head in
-			focus Node[t], Nil[t];
+			focus (Node[t]), (Nil[t]);
 			case !n of
-				Nil#x $->$
+				Nil#x ->
 					n := Nil#x;
 					defocus;
-					head := < t, n ::NodeP[t] (+) NilP{t] > ;
+					head := < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) > ;
 					End#{}
-			| Node#[e,m] $->$
+			| Node#n ->
+					let [e,m] = n in
 					// following open is necessary only to disambiguate what is shared
 					open <tt,nn> = m in
-						focus Node[tt], Nil[tt];
+						focus (Node[tt]), (Nil[tt]);
 						case !nn of
-						Node#x $->$
+						Node#x ->
 							nn := Node#x;
 							defocus;
-							share NodeP[tt] as NodeP[tt] || NodeP[tt];
-							head := <tt,nn ::NodeP[tt] (+) NilP{tt]>
-						| Nil#y $->$
+							share (NodeP[tt]) as (NodeP[tt]) || (NodeP[tt]);
+							head := <tt,nn :: ( (NodeP[tt]) (+) (NilP[tt]) )>
+						| Nil#y ->
 							n := Nil#y;
 							defocus;
-							share NilP[tt] as NilP[tt] || NilP[tt];
-							head := < tt, nn ::NodeP[tt] (+) NilP{tt] >
+							share (NilP[tt]) as (NilP[tt]) || (NilP[tt]);
+							head := < tt, nn :: ( (NodeP[tt]) (+) (NilP[tt]) ) >
 						end;
-						n := Node#[e,< tt, nn :: NodeP[tt] (+) NilP{tt] >];
+						n := Node#{e,< tt, nn :: ( (NodeP[tt]) (+) (NilP[tt]) ) >};
 						defocus
 					end;
 					Result#e
+					end
 			end
 		end,
 				
-	clone = fun( _ : []
-					:: rw h exists q.( ref q :: NodeP[q] (+) NilP[q] ) ).
+	clone = fun( _ : [] :: rw h ( exists q.( ref q :: NodeP[q] (+) NilP[q] ) ) ).
 		open <t,n> = !head in
-			focus Node[t], Nil[t];
+			focus (Node[t]), (Nil[t]);
 			case !n of
-				Node#x $->$
+				Node#x ->
 					n := Node#x;
 					defocus;
-					share NodeP[t] as NodeP[t] || NodeP[t];
-					make ( < t, n :: NodeP[t] (+) NilP{t] > )
-					head := < t, n :: NodeP[t] (+) NilP{t]>
-			| Nil#y $->$
+					share (NodeP[t]) as (NodeP[t]) || (NodeP[t]);
+					make < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) >;
+					head := < t, n :: ( (NodeP[t]) (+) (NilP[t]) )>
+			| Nil#y ->
 					n := Nil#y;
 					defocus;
-					share NilP[t] as NilP[t] || NilP[t];
-					make ( < t, n :: NodeP[t] (+) NilP{t] > );
-					head := < t, n ::NodeP[t] (+) NilP{t] >
+					share (NilP[t]) as (NilP[t]) || (NilP[t]);
+					make < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) >;
+					head := < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) >
 			end
 		end
 
@@ -74,3 +80,8 @@ let newSpaghetti = fun( _ : [] ).
 		// creates an empty stack (nil up)
 		make Nil#{}
 	end
+	
+	// client code
+	in
+	newSpaghetti
+end

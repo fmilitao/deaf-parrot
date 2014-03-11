@@ -560,12 +560,14 @@ module('Typechecker.Components');
 			equal( subtype( t_f1, t_f3 ), false );
 			//equal( subtype( t_f3, t_f1 ), false ); //FIXME bug
 			
-			var t_e1 = new t.ExistsType(new t.TypeVariable('X'),new t.TypeVariable('X'));
-			var t_e2 = new t.ExistsType(new t.TypeVariable('Y'),new t.TypeVariable('Y'));
-			var t_e3 = new t.ExistsType(new t.TypeVariable('Z'),new t.BangType(new t.TypeVariable('Z')));
+			var t_e1 = new t.ExistsType(new t.TypeVariable('X'),new t.TypeVariable('X')); // exists X.X
+			var t_e2 = new t.ExistsType(new t.TypeVariable('Y'),new t.TypeVariable('Y')); // exists Y.Y
+			var t_e3 = new t.ExistsType(new t.TypeVariable('Z'),new t.BangType(new t.TypeVariable('Z'))); // exists Z.!Z
 			equal( subtype( t_e1, t_e2 ), true );
 			equal( subtype( t_e1, t_e3 ), false );
-			//equal( subtype( t_e3, t_e1 ), false ); //FIXME bug infinite loop?
+			
+			equal( subtype( t_e3, t_e1 ), true );
+			// exists Z.!Z <: exists X.X
 			
 			var t_alt2 = new t.AlternativeType();
 			t_alt2.add(new t.TypeVariable('X'));
@@ -589,8 +591,8 @@ module('Typechecker.Components');
 			tmp_rec.add('name',new t.RecordType());
 			t_rec1 = new t.RecursiveType(new t.TypeVariable('X'),new t.BangType(tmp_rec));
 			t_rec2 = new t.BangType( new t.RecursiveType(new t.TypeVariable('X'),new t.BangType(tmp_rec)) );
-			// perhaps counter intuitive, but this SHOULD NOT be the case!
-			equal( subtype(t_rec1,t_rec2), false);
+
+			equal( subtype(t_rec1,t_rec2), true); // ?
 			
 			// FIXME delayed app, recursive types
 		} );

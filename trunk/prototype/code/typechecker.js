@@ -620,12 +620,19 @@ var TypeChecker = (function(AST,assertF){
 	 * 
 	 */
 	
-	var Table = function(){
+	var Table = function(eq){
 		var visited = [];
+		
+		// default compare function is pointer equality
+		if( eq === undefined ){
+			eq = function(a,b){
+				return a===b;
+			}
+		}
 		
 		this.seen = function(a,b){
 			for(var i=0;i<visited.length;++i){
-				if( visited[i][0] === a && visited[i][1] === b )
+				if( eq(visited[i][0],a) && eq(visited[i][1],b) )
 					return true;
 			}
 			return false;
@@ -639,11 +646,11 @@ var TypeChecker = (function(AST,assertF){
 			var tmp = [];
 			for(var i=0;i<visited.length;++i){
 				if( left ){ // on left
-					if( visited[i][1] === a ){
+					if( eq(visited[i][1],a) ){
 						tmp.push( [ visited[i][0], b ] );
 					}
 				}else{ // on right
-					if( visited[i][0] === a ){
+					if( eq(visited[i][0],a) ){
 						tmp.push( [ b, visited[i][1] ] );
 					}
 				}
@@ -948,16 +955,32 @@ var TypeChecker = (function(AST,assertF){
 	 */
 	// FIXME: switch to equals kind of algorithm?
 	var subtypeOf = function( t1 , t2 ){
-		var table = new Table();
+		var table = new Table(equals);
 
 		var subtype = function( t1, m1, t2, m2 ){
-
-			// FIXME this check should not be needed...	
-			if( t1 === t2 || equals(t1,t2) ) // if exactly the same thing
+	
+			if( t1 === t2 || equals(t1,t2) ) // A <: A
 				return true;
 				
 			if( table.seen( t1, t2 ) )
 				return true;
+			
+			// "pure to linear" - ( t1: !A ) <: ( t2: A )
+			if ( t1.type === types.BangType && t2.type !== types.BangType )
+				return subtype( t1.inner(), m1, t2, m2 );
+
+			//debugger;
+			/*
+			if( t2.type === types.AlternativeType &&
+					t1.type !== types.AlternativeType ){
+						debugger
+				var i2s = t2.inner();
+				// attempt to find one valid alternative
+				for( var i=0;i<i2s.length;++i){
+					if( subtype(t1,i2s[i]) )
+						return true;
+				}
+			} */
 			
 			var var1 = t1.type === types.TypeVariable;
 			var var2 = t2.type === types.TypeVariable;
@@ -1065,24 +1088,9 @@ var TypeChecker = (function(AST,assertF){
 			// "ref" t1: (ref p) <: !(ref p)
 			if ( t1.type === types.ReferenceType && t2.type === types.BangType )
 				return subtype( t1, m1, t2.inner(), m2 );
-	
-			// "pure to linear" - ( t1: !A ) <: ( t2: A )
-			if ( t1.type === types.BangType && t2.type !== types.BangType )
-				return subtype( t1.inner(), m1, t2, m2 );
-		
+			
 			// all remaining rule require equal kind of type
 			if( t1.type !== t2.type ){
-				//debugger;
-				/*
-				if( t2.type === types.AlternativeType ){
-					var i2s = t2.inner();
-					// attempt to find one valid alternative
-					for( var i=0;i<i2s.length;++i){
-						if( subtype(t1,i2s[i])) // FIXME
-							return true;
-					}
-				}
-				*/
 				return false;
 			}
 			
