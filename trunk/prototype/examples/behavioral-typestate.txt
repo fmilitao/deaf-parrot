@@ -1,10 +1,10 @@
 
 import add
 
-typedef addType = forall T.forall t.( [addBoth : [] :: rw t [] -o int :: T] )
-typedef initRType = forall T.forall t.( [initRight: int :: rw t [] -o [] :: rw t (addType[T][t])] )
-typedef initLType = forall T.forall t.( [initLeft: int :: rw t [] -o [] :: rw t (initRType[T][t])] )
-typedef Behavioral = forall T.exists t.( ref t :: rw t (initLType[T][t]) )
+typedef addType<T,t> = [addBoth : [] :: rw t [] -o int :: T]
+typedef initRType<T,t> = [initRight: int :: rw t [] -o [] :: rw t (addType[T,t])]
+typedef initLType<T,t> = [initLeft: int :: rw t [] -o [] :: rw t (initRType[T,t])]
+typedef Behavioral<T> = exists t.( ref t :: rw t (initLType[T,t]) )
 
 // typestate pair object
 let newPair = fun( _ : [] ).
@@ -48,7 +48,7 @@ let newPair = fun( _ : [] ).
 			// the following works due to idioms:
 			// this
 			// but explicitly also works:
-			< self : ptr, this :: (rw self (initLType[R*L][self])) >
+			< self : ptr, this :: (rw self (initLType[R*L,self])) >
 			end
 			in
 			let f = <T>fun( o : Behavioral[T] ).( 

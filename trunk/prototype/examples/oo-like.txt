@@ -2,7 +2,11 @@
 import concat
 
 // Methods, stored in a capability for 'this'
-typedef M = forall t.(rw t (rec X. ![ name : [] :: rw t X -o string :: rw t X, toString : [] :: rw t X -o string :: rw t X ]))
+typedef R<t> = [ name : [] :: (M[t]) -o string :: (M[t]),
+                  toString : [] :: (M[t]) -o string :: (M[t]) ]
+typedef M<t> = rw t !(R[t])
+
+// FIXME: bang must be on M to ensure there is no linear read. THIS IS BAD.
 
 let classAnimal = <t>fun( this : ref t ).
 	{

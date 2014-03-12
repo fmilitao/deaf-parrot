@@ -233,7 +233,6 @@ var libTyper = function( file, ctx ){
 		);
 	}
 	
-	
 	// concat: !(string -o string -o !string)
 	if( file === 'concat' ){
 		return new v.BangType(
@@ -529,8 +528,21 @@ var toHTML = function (t){
 			return '<b>'+t.name()+'</b>';
 		case types.NoneType:
 			return '<b>none</b>';
-		case types.DelayedApp:
-			return wq( wq( _toHTML(t.inner()) )+wQ('[')+ wq( toHTML(t.id()) )+wQ(']') );
+		//case types.DelayedApp:
+		//	return wq( wq( _toHTML(t.inner()) )+wQ('[')+ wq( toHTML(t.id()) )+wQ(']') );
+		
+		case types.DefinitionType:{
+			var t_def = '<span class="type_definition">'+t.definition()+'</span>';
+			if( t.args().length === 0 )
+				return wq( t_def );
+			
+			var res = [];
+			var as = t.args();
+			for( var i in as )
+				res.push( toHTML(as[i]) );
+			return wq( t_def+wQ('[')+res.join(', ')+wQ(']') );
+		}
+		
 		case types.RelyType:
 			return wq( wq( _toHTML(t.rely()) )+wQ(' &#8658; ') + wq(_toHTML(t.guarantee())) );
 		case types.GuaranteeType:

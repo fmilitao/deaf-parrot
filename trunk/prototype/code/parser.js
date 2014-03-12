@@ -55,8 +55,8 @@ var AST = new function(){
 		'STAR_TYPE',
 		'PRIMITIVE_TYPE',
 		'NONE_TYPE',
-		'RECURSIVE_TYPE',
-		'DELAY_TYPE_APP',
+//		'RECURSIVE_TYPE',
+		'DEFINITION_TYPE',
 		'ALTERNATIVE_OPEN',
 		'FORALL',
 		'PACK',
@@ -91,8 +91,8 @@ var AST = new function(){
 		'LET_TUPLE'
 	);
 	
-	this.makeTypedef = function(id,type,info){
-		return aux( this.kinds.TYPEDEF, {id:id,type:type}, info);
+	this.makeTypedef = function(id,type,pars,info){
+		return aux( this.kinds.TYPEDEF, {id:id,type:type,pars:pars}, info);
 	}
 	this.makeImport = function(id,info){
 		return aux( this.kinds.IMPORT, {id:id}, info);
@@ -198,9 +198,9 @@ var AST = new function(){
 	this.makeForallType = function(id,type, info){
 		return aux( this.kinds.FORALL_TYPE, {id: id, exp: type}, info);
 	}
-	this.makeRecursiveType = function(id,type, info){
-		return aux( this.kinds.RECURSIVE_TYPE, {id: id, exp: type}, info);
-	}
+//	this.makeRecursiveType = function(id,type, info){
+//		return aux( this.kinds.RECURSIVE_TYPE, {id: id, exp: type}, info);
+//	}
 	this.makeStackedType = function(left,right, info){
 		return aux( this.kinds.STACKED_TYPE, {left: left, right: right}, info);
 	}
@@ -252,8 +252,8 @@ var AST = new function(){
 	this.makeNoneType = function(info){
 		return aux( this.kinds.NONE_TYPE, {}, info);
 	}
-	this.makeDelayableTypeApp = function(exp,type,info){
-		return aux( this.kinds.DELAY_TYPE_APP, {exp: exp, id: type}, info);
+	this.makeDefinitionType = function(exp,type,info){
+		return aux( this.kinds.DEFINITION_TYPE, {name: exp, args: type}, info);
 	}
 
 }();

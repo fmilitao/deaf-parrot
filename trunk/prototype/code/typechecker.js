@@ -54,7 +54,7 @@ var TypeChecker = (function(AST,assertF){
 
 	var newType = function( type, constructor ){
 		error( ( !types.hasOwnProperty(type) && !fct.hasOwnProperty(type) )
-			|| ( '@newType, already exists: '+type ) );
+			|| ( '@newType: already exists: '+type ) );
 		
 		// default stuff for that particular type
 		constructor.prototype.type = type;
@@ -117,7 +117,6 @@ var TypeChecker = (function(AST,assertF){
 		}
 	);
 	
-	
 	var ForallType = newType('ForallType',
 		function ForallType( id, inner ) {
 			this.id = function(){ return id; }
@@ -163,7 +162,8 @@ var TypeChecker = (function(AST,assertF){
 			// intentionally empty	
 		}
 	);
-	// single value for this type.
+	
+	// singleton value for this type.
 	NoneType = new NoneType();
 	
 	var TupleType = newType('TupleType',
@@ -181,7 +181,7 @@ var TypeChecker = (function(AST,assertF){
 
 	var ReferenceType = newType('ReferenceType',
 		function ReferenceType( location ){
-			this.location = function(){ return location; } // : LocationVariable
+			this.location = function(){ return location; }
 		}
 	);
 	
@@ -194,7 +194,7 @@ var TypeChecker = (function(AST,assertF){
 	
 	var CapabilityType = newType('CapabilityType',
 		function CapabilityType( loc, val ){
-			this.location = function(){ return loc; } // : LocationVariable
+			this.location = function(){ return loc; }
 			this.value = function(){ return val; }
 		}
 	);
@@ -223,13 +223,6 @@ var TypeChecker = (function(AST,assertF){
 		}
 	);
 	
-	var RecursiveType = newType('RecursiveType',
-		function RecursiveType( id, inner ){
-			this.id = function(){ return id; }
-			this.inner = function(){ return inner; }
-		}
-	);
-	
 	var RelyType = newType('RelyType',
 		function RelyType( rely, guarantee ){
 			this.rely = function(){ return rely; }
@@ -244,18 +237,17 @@ var TypeChecker = (function(AST,assertF){
 		}
 	);
 	
-	// this is a "fake" type that is just convenient
-	var DelayedApp = newType('DelayedApp',
-		function DelayedApp( delayed_type, app_type ){
-			this.inner = function(){ return delayed_type; }
-			this.id = function(){ return app_type; }
+	var DefinitionType = newType('DefinitionType',
+		function DefinitionType( definition_name, arg ){
+			this.definition = function(){ return definition_name; }
+			this.args = function(){ return arg; }
 		}
 	);
 	
 	exports.types = types;
 	exports.factory = fct;
 	
-	// append toString method
+	// append toString method to types
 	(function(){
 		// defines which types get wrapping parenthesis
 		var _wrap = function(t){
@@ -315,10 +307,6 @@ var TypeChecker = (function(AST,assertF){
 			return res.join(' (+) ');
 		} );
 		
-		_add( types.RecursiveType, function(){
-			return 'rec '+this.id().name()+'.'+_wrap( this.inner() );
-		} );
-		
 		_add( types.ExistsType, function(){
 			return 'exists '+this.id().name()+'.'+_wrap( this.inner() );
 		} );
@@ -351,16 +339,16 @@ var TypeChecker = (function(AST,assertF){
 			return "["+this.getValues().join()+"]";
 		} );
 		
+		_add( types.DefinitionType, function(){
+			return _wrap( this.definition() )+'['+ this.args().join() +']';
+		} );
+		
 		var tmp = function(){ return this.name(); };
 		_add( types.LocationVariable, tmp );
 		_add( types.TypeVariable, tmp );
 		_add( types.PrimitiveType, tmp );
 		
 		_add( types.NoneType, function(){ return 'none'; });
-		
-		_add( types.DelayedApp, function(){
-			return _wrap( t.inner() )+'['+ this.id() +']';
-		} );
 		
 	})();
 
@@ -417,8 +405,7 @@ var TypeChecker = (function(AST,assertF){
 			}
 			return isFree(t.id(),loc) && isFree(t.inner(),loc);
 		});
-		_add( types.ExistsType, _visitor[types.ForallType] );
-		_add( types.RecursiveType, _visitor[types.ForallType] );
+		_add( types.ExistsType, _visitor[types.ForallType] ); //reuse definition
 
 		_add( types.ReferenceType, function(t,loc){
 			return isFree( t.location(), loc );
@@ -448,7 +435,7 @@ var TypeChecker = (function(AST,assertF){
 					return false;
 			return true;
 		});
-		_add( types.StarType, _visitor[types.AlternativeType] );
+		_add( types.StarType, _visitor[types.AlternativeType] ); //reuse def.
 		
 		_add( types.TupleType, function(t,loc){
 			var vs = t.getValues();
@@ -462,19 +449,25 @@ var TypeChecker = (function(AST,assertF){
 		_add( types.TypeVariable, function(t,loc){
 			return t.name() !== loc.name();
 		});
-		_add( types.LocationVariable, _visitor[types.TypeVariable] );
+		_add( types.LocationVariable, _visitor[types.TypeVariable] ); //reuse def.
 		
 		_add( types.PrimitiveType, function(t,loc){ return true; });
 		_add( types.NoneType, _visitor[types.PrimitiveType] );
 		
-		_add( types.DelayedApp, function(t,loc){
-			return isFree(t.inner(),loc) && isFree(t.id(),loc);
+		_add( types.DefinitionType, function(t,loc){
+			// t.definition() is a name/identifer.
+			var vs = t.args();
+			for( var i in vs ){
+				if( !isFree(vs[i],loc) )
+					return false;
+			}
+			return true;
 		});
 		
 		// the closure that uses the private _visitor
 		return function (t,loc) {
 			if( !_visitor.hasOwnProperty( t.type ) )
-				error( "Not expecting " +t.type );
+				error( "@isFree: Not expecting " +t.type );
 			return _visitor[t.type](t,loc);
 		};
 	})();
@@ -485,137 +478,155 @@ var TypeChecker = (function(AST,assertF){
 	 * @param {Type} type that is to be searched
 	 * @param {Type} when 'from' is found, it is replaced with
 	 * @param {LocationVariable,TypeVariable} 'to'
+	 * @param {Function} equals function to compare types
 	 * @return a *copy* of 'type' where all instances of 'from' have been
 	 * 	replaced with 'to' (note that each to is the same and never
 	 * 	cloned).
 	 *  Note that it also RENAMES any bounded variable that colides with the
 	 *  'from' name so that bounded names are never wrongly substituted.
 	 */
-	var substitution = function(type,from,to){
+	
+	var substitutionF = function(t,from,to,eq){
 		
-		var rec = function(t){
-			if( equals(t,from) )
-				return to;
+		// for convenience...
+		var rec = function(type){
+			return substitutionF(type,from,to,eq);
+		}
+		
+		if( eq(t,from) )
+			return to;
 			
-			switch ( t.type ){
-			case types.FunctionType:
-				return new FunctionType( rec(t.argument()), rec(t.body()) );
-			case types.BangType:
-				return new BangType( rec(t.inner()) );
-			case types.RelyType: {
-				return new RelyType( rec(t.rely()), rec(t.guarantee()) );
-			}
-			case types.GuaranteeType: {
-				return new GuaranteeType( rec(t.guarantee()), rec(t.rely()) );
-			}
-			case types.SumType:{
-				var sum = new SumType();
-				var tags = t.tags();
-				for( var i in tags )
-					sum.add( tags[i], rec(t.inner(tags[i])) );
-				return sum;
-			}
-			case types.AlternativeType:{
-				var star = new AlternativeType();
-				var inners = t.inner();
-				for( var i=0;i<inners.length;++i ){
-					star.add( rec(inners[i]) ); 
-				}	
-				return star;
-			}
-			case types.StarType:{
-				var star = new StarType();
-				var inners = t.inner();
-				for( var i=0;i<inners.length;++i ){
-					star.add( rec(inners[i]) ); 
-				}	
-				return star;
-			}
-			// CAPTURE AVOIDANCE in the following cases...
-			// Renaming is needed to avoid capture of bounded variables.
-			// We have two cases to consider:
-			// 1. The variable to be renamed is the same as bounded var:
-			// (exists t.A){t/X} "t for X" 
-			// in this case, we are done renaming, since t is bounded inside A.
-			// 2. The *to* name is the same the bounded var:
-			// (exists t.A){g/t} "g for t"
-			// in this case we must rename the location 't' to avoid capture
-			// in the case when 'g' occurs in A.
-			case types.ExistsType: 
-			case types.ForallType:
-			case types.RecursiveType: {
-				if( ( from.type === types.LocationVariable ||
-					  from.type === types.TypeVariable )
-						&& t.id().name() === from.name() ){
-					// 'from' is bounded, thus we are done. 
-					return t;
-				}
-				
-				var nvar = t.id();
-				var ninner = t.inner();
-				if( ( to.type === types.LocationVariable ||
-					  to.type === types.TypeVariable )
-						&& t.id().name() === to.name() ){
-					// capture avoiding substitution 
-					nvar = t.id().clone(null); // fresh loc/type-variable
-					ninner = substitution( t.inner(), t.id(), nvar );
-				}
-				
-				// switch again to figure out what constructor to use.
-				switch( t.type ){
-					case types.ExistsType:
-						return new ExistsType( nvar, rec(ninner) );
-					case types.ForallType:
-						return new ForallType( nvar, rec(ninner) );
-					case types.RecursiveType:
-						return new RecursiveType( nvar, rec(ninner) );
-					default:
-						error( "Not expecting " +t.type );
-				}
-			}
-			case types.ReferenceType:
-				return new ReferenceType( rec(t.location()) );
-			case types.StackedType:
-				return new StackedType( rec(t.left()), rec(t.right()) );
-			case types.CapabilityType:
-				return new CapabilityType( rec(t.location()), rec(t.value()) );
-			case types.RecordType: {
-				var r = new RecordType();
-				var fs = t.getFields();
-				for( var i in fs )
-					r.add( i, rec(fs[i]) );
-				return r;
-			}
-			case types.TupleType: {
-				var r = new TupleType();
-				var fs = t.getValues();
-				for( var i in fs )
-					r.add( rec(fs[i]) );
-				return r;
-			}
-			// these remain UNCHANGED
-			// note that Location/Type Variable is teste ABOVE, not here
-			case types.LocationVariable:
-			case types.TypeVariable:
-			case types.PrimitiveType:
-			case types.NoneType:
+		switch ( t.type ){
+		case types.FunctionType:
+			return new FunctionType( rec(t.argument()), rec(t.body()) );
+		case types.BangType:
+			return new BangType( rec(t.inner()) );
+		case types.RelyType: {
+			return new RelyType( rec(t.rely()), rec(t.guarantee()) );
+		}
+		case types.GuaranteeType: {
+			return new GuaranteeType( rec(t.guarantee()), rec(t.rely()) );
+		}
+		case types.SumType:{
+			var sum = new SumType();
+			var tags = t.tags();
+			for( var i in tags )
+				sum.add( tags[i], rec(t.inner(tags[i])) );
+			return sum;
+		}
+		case types.AlternativeType:{
+			var star = new AlternativeType();
+			var inners = t.inner();
+			for( var i=0;i<inners.length;++i ){
+				star.add( rec(inners[i]) ); 
+			}	
+			return star;
+		}
+		case types.StarType:{
+			var star = new StarType();
+			var inners = t.inner();
+			for( var i=0;i<inners.length;++i ){
+				star.add( rec(inners[i]) ); 
+			}	
+			return star;
+		}
+		// CAPTURE AVOIDANCE in the following cases...
+		// Renaming is needed to avoid capture of bounded variables.
+		// We have two cases to consider:
+		// 1. The variable to be renamed is the same as bounded var:
+		// (exists t.A){t/X} "t for X" 
+		// in this case, we are done renaming, since t is bounded inside A.
+		// 2. The *to* name is the same the bounded var:
+		// (exists t.A){g/t} "g for t"
+		// in this case we must rename the location 't' to avoid capture
+		// in the case when 'g' occurs in A.
+		case types.ExistsType: 
+		case types.ForallType: {
+			if( ( from.type === types.LocationVariable ||
+				  from.type === types.TypeVariable )
+					&& t.id().name() === from.name() ){
+				// 'from' is bounded, thus we are done. 
 				return t;
-			case types.DelayedApp: {
-				var inner = rec(t.inner());
-				var id = rec(t.id());
-				// ok to apply
-				if( inner.type === types.ForallType )
-					return substitution( inner.inner(), inner.id(), id );
-				// still delayed
-				return new DelayedApp(inner,id);
 			}
-			default:
-				error( "Not expecting " +t.type );
+			
+			var nvar = t.id();
+			var ninner = t.inner();
+			if( ( to.type === types.LocationVariable ||
+				  to.type === types.TypeVariable )
+					&& t.id().name() === to.name() ){
+				// capture avoiding substitution 
+				nvar = t.id().clone(null); // fresh loc/type-variable
+				
+				// must use simpler equals function to avoid unending cycles
+				ninner = substitutionVarsOnly( t.inner(), t.id(), nvar );
 			}
-		};
-		return rec(type);
+			
+			// switch again to figure out what constructor to use.
+			switch( t.type ){
+				case types.ExistsType:
+					return new ExistsType( nvar, rec(ninner) );
+				case types.ForallType:
+					return new ForallType( nvar, rec(ninner) );
+				default:
+					error( "@substitution: Not expecting " +t.type );
+			}
+		}
+		case types.ReferenceType:
+			return new ReferenceType( rec(t.location()) );
+		case types.StackedType:
+			return new StackedType( rec(t.left()), rec(t.right()) );
+		case types.CapabilityType:
+			return new CapabilityType( rec(t.location()), rec(t.value()) );
+		case types.RecordType: {
+			var r = new RecordType();
+			var fs = t.getFields();
+			for( var i in fs )
+				r.add( i, rec(fs[i]) );
+			return r;
+		}
+		case types.TupleType: {
+			var r = new TupleType();
+			var fs = t.getValues();
+			for( var i in fs )
+				r.add( rec(fs[i]) );
+			return r;
+		}
+		case types.DefinitionType: {
+			var fs = t.args();
+			var tmp = [];
+			for( var i in fs )
+				tmp = tmp.concat( rec(fs[i]) );
+			return new DefinitionType(t.definition(),tmp);
+		}
+		// these remain UNCHANGED
+		// note that Location/Type Variable is tested ABOVE, not here
+		case types.LocationVariable:
+		case types.TypeVariable:
+		case types.PrimitiveType:
+		case types.NoneType:
+			return t;
+
+		default:
+			error( "@substitution: Not expecting " +t.type );
+		}
 	};
 	
+	var substitutionVarsOnly = function(type,from,to){
+		if( from.type !== to.type ||
+			( from.type !== types.LocationVariable && 
+				from.type !== types.TypeVariable ) ){
+			error( "@substitutionVarsOnly: not a Type/LocationVariable" );
+		}
+		return substitutionF(type,from,to,function(a,b){
+			// same type and same name
+			return a.type === b.type && a.name() === b.name();
+		});
+	};
+	
+	var substitution = function(t,from,to){
+		return substitutionF(t,from,to,equals);
+	};
+
 	/*
 	 * 
 	 */
@@ -682,9 +693,10 @@ var TypeChecker = (function(AST,assertF){
 			return parent.get(id);
 		}
 	}
-	
-// FIXME both subtype and equals are quite messy algorithms that need to be
-// rethought, specially where tabling should or not appear.
+
+	//
+	// EQUALS and SUBTYPING
+	//	
 
 	/**
 	 * Tests if types 'a' and 'b' are the same.
@@ -697,13 +709,13 @@ var TypeChecker = (function(AST,assertF){
 	 */
 	var equals = function(a,b){
 
-		// recursion table so as to remember those pairs of types that were
-		// already seen in order to avoid unending executions.
+		// Following table is used to store the relation between variables,
+		// instead of renaming. Thus, if the pair (X,Y) is in the table, it
+		// assumes that they are the same.
+//XXX: this won't work if there are collisions forall x.(exists x.x)...
 		var table = new Table();
 		
-		// auxiliary function that is bound to the previous 'visited' table
-		// and also uses temporary environments to remember type variables, etc.
-		var equalsTo = function( t1, m1, t2, m2 ){
+		var equalsTo = function( t1, t2 ){
 			
 			// exactly the same
 			if( t1 === t2 )
@@ -712,106 +724,20 @@ var TypeChecker = (function(AST,assertF){
 			if( table.seen( t1, t2 ) )
 				return true;
 			
-			var var1 = t1.type === types.TypeVariable;
-			var var2 = t2.type === types.TypeVariable;
-			if( var1 ^ var2 ){
-				
-				// in here?? the next line makes no sense...
-				// TODO: this needs to be debuged although it should not cause
-				// issues since types are tested for pointer equality and is
-				// necessary to ensure that such 'unfold' of the type variable
-				// will not be problematic.
-				table.push( t1, t2 ); // assume they are the same
-
-				if( var1 ){
-					t1 = m1.get( t1.name() );
-					// some problem on getting the variable's definition
-					// assume it is not equal.
-					if( t1 === undefined )
-						return false;
+			// Only tries to unfold definition if it appears that it will help. 
+//XXX: this is a very shallow lookup. won't work with more than 2 typedefs in sequence
+			var def1 = t1.type === types.DefinitionType;
+			var def2 = t2.type === types.DefinitionType;
+			if( def1 ^ def2 ){
+				if( def1 && typedefs[t1.definition()].type === t2.type ){
+					t1 = unfoldDefinition(t1);
+					return equalsTo( t1, t2 );
 				}
-				if( var2 ){
-					t2 = m2.get( t2.name() );
-					if( t2 === undefined )
-						return false;
-				}
-				
-				return equalsTo( t1, m1, t2, m2 );
-			}
-			
-			// recursive types must be handled before hand
-			// handle asymmetric comparision of recursive types
-			var rec1 = t1.type === types.RecursiveType;
-			var rec2 = t2.type === types.RecursiveType;
-			if( rec1 ^ rec2 ){
-
-				// if this is wrong, then it must be cause their internals
-				// are different. Therefore, it will fail elsewhere and it is
-				// OK to assume they are equal in here.
-
-				if( rec1 ){
-					m1 = m1.newScope();
-					m1.set( t1.id().name(), t1 );
-					t1 = t1.inner();
-				}
-				if( rec2 ){
-					m2 = m2.newScope();
-					m2.set( t2.id().name(), t2 );
-					t2 = t2.inner();
-				}
-			
-				return equalsTo( t1, m1, t2, m2 );
-			}
-			
-			var del1 = t1.type === types.DelayedApp;
-			var del2 = t2.type === types.DelayedApp;
-			if( del1 ^ del2 ){
-				
-				if( del1 ){
-					// special (ad-hoc?) lookahead
-					if( t1.inner().type === types.RecursiveType &&
-						t1.inner().inner().type === types.ForallType ){				
-						var v = t1.id();
-						var rec = t1.inner();
-						var forall = rec.inner();
-						
-						// recursive type
-						m1 = m1.newScope();
-						m1.set( rec.id().name(), rec );
-						
-						// TRANSITIVITY: must ensure is considered same as other
-						table.transitivity( v.name(), forall.id().name(), false );
-	
-						t1 = forall.inner();
-
-						return equalsTo( t1, m1, t2, m2 );
-					}
-				}
-				
-				if( del2 ){
-					// special (ad-hoc?) lookahead
-					if( t2.inner().type === types.RecursiveType &&
-						t2.inner().inner().type === types.ForallType ){				
-
-						var v = t2.id();
-						var rec = t2.inner();
-						var forall = rec.inner();
-						
-						// recursive type
-						m2 = m2.newScope();
-						m2.set( rec.id().name(), rec );
-						
-						// TRANSITIVITY: must ensure is considered same as other
-						table.transitivity( v.name(), forall.id().name(), true );
-	
-						t2 = forall.inner();
-
-						return equalsTo( t1, m1, t2, m2 );
-					}
+				if( def2 && typedefs[t2.definition()].type === t1.type ){
+					t2 = unfoldDefinition(t2);
+					return equalsTo( t1, t2 );
 				}
 			}
-			
-			// ----
 			
 			if( t1.type !== t2.type )
 				return false;
@@ -819,27 +745,15 @@ var TypeChecker = (function(AST,assertF){
 			// assuming both same type
 			switch ( t1.type ){
 				case types.ForallType:		
-				case types.ExistsType:
-				case types.RecursiveType: {
+				case types.ExistsType: {
 					if( t1.id().type !== t2.id().type )
 						return false;
 
-					// assume they are the same
+					// assume the labels are equal, if nothing else fails this is
+					// true due to equality up to renaming of bounded variables
 					table.push( t1.id().name(), t2.id().name() );
-
-					if( t1.type === types.RecursiveType ){
-						// environment used to store the type for the case
-						// unfolding is necessary on the recursive types
-						m1 = m1.newScope();
-						m2 = m2.newScope();
-						
-						m1.set( t1.id().name(), t1 );
-						m2.set( t2.id().name(), t2 );
-						
-						table.push( t1, t2 );
-					}
 					
-					return equalsTo( t1.inner(), m1, t2.inner(), m2 );
+					return equalsTo( t1.inner(), t2.inner() );
 				}
 				case types.TypeVariable:
 				case types.LocationVariable: {
@@ -848,19 +762,18 @@ var TypeChecker = (function(AST,assertF){
 					return  t1.name() === t2.name() ||
 						table.seen( t1.name(), t2.name() );
 				}
-				// =============================================================
 				case types.FunctionType:
-					return equalsTo( t1.argument(), m1, t2.argument(), m2 ) &&
-						equalsTo( t1.body(), m1, t2.body(), m2 );
+					return equalsTo( t1.argument(), t2.argument() ) &&
+						equalsTo( t1.body(), t2.body() );
 				case types.BangType:
-					return equalsTo( t1.inner(), m1, t2.inner(), m2 );
+					return equalsTo( t1.inner(), t2.inner() );
 				case types.RelyType: {
-					return equalsTo( t1.rely(), m1, t2.rely(), m2 ) &&
-						equalsTo( t1.guarantee(), m1, t2.guarantee(), m2 );
+					return equalsTo( t1.rely(), t2.rely() ) &&
+						equalsTo( t1.guarantee(), t2.guarantee() );
 				}
 				case types.GuaranteeType: {
-					return equalsTo( t1.guarantee(), m1, t2.guarantee(), m2 ) &&
-						equalsTo( t1.rely(), m1, t2.rely(), m2 );
+					return equalsTo( t1.guarantee(), t2.guarantee() ) &&
+						equalsTo( t1.rely(), t2.rely() );
 				}
 				case types.SumType: {
 					var t1s = t1.tags();
@@ -870,28 +783,27 @@ var TypeChecker = (function(AST,assertF){
 						return false;
 					for( var i=0; i<t1s.length; ++i ){
 						if( t2s.indexOf(t1s[i])===-1 ||
-							!equalsTo( t1.inner(t1s[i]), m1, t2.inner(t1s[i]), m2 ) )
+							!equalsTo( t1.inner(t1s[i]), t2.inner(t1s[i]) ) )
 							return false;
 					}
 					return true;
 				}
 				case types.ReferenceType:
-					return equalsTo( t1.location(), m1, t2.location(), m2 );
+					return equalsTo( t1.location(), t2.location() );
 				case types.StackedType:
-					return equalsTo( t1.left(), m1, t2.left(), m2 ) &&
-						equalsTo( t1.right(), m1, t2.right(), m2 );
+					return equalsTo( t1.left(), t2.left() ) &&
+						equalsTo( t1.right(), t2.right() );
 				case types.CapabilityType:
-					return equalsTo( t1.location(), m1, t2.location(), m2 ) &&
-						equalsTo( t1.value(), m1, t2.value(), m2 );
+					return equalsTo( t1.location(), t2.location() ) &&
+						equalsTo( t1.value(), t2.value() );
 				case types.RecordType: {
-					// t1 <: t2
 					var t1s = t1.getFields();
 					var t2s = t2.getFields();
-					if( Object.keys(t1s).length < Object.keys(t2s).length )
+					if( Object.keys(t1s).length !== Object.keys(t2s).length )
 						return false;
 					for( var i in t2s )
 						if( !t1s.hasOwnProperty(i) || 
-							!equalsTo( t1s[i], m1, t2s[i], m2 ) )
+							!equalsTo( t1s[i], t2s[i] ) )
 							return false;
 					return true;
 				} 
@@ -901,7 +813,7 @@ var TypeChecker = (function(AST,assertF){
 					if( t1s.length !== t2s.length )
 						return false;
 					for( var i=0;i<t1s.length;++i )
-						if( !equalsTo( t1s[i], m1, t2s[i], m2 ) )
+						if( !equalsTo( t1s[i], t2s[i] ) )
 							return false;
 					return true;
 				}
@@ -922,7 +834,7 @@ var TypeChecker = (function(AST,assertF){
 						// tries to find matching element
 						for(var j=0;j<tmp_i2s.length;++j){
 							var tmp = tmp_i2s[j];
-							if( equalsTo(curr,m1,tmp,m2) ){
+							if( equalsTo(curr,tmp) ){
 								tmp_i2s.splice(j,1); // removes element
 								found = true;
 								break; // continue to next
@@ -935,16 +847,25 @@ var TypeChecker = (function(AST,assertF){
 					}
 					return true;
 				}
-				case types.DelayedApp:{
-					return equalsTo( t1.inner(), m1, t2.inner(), m2 ) &&
-						equalsTo( t1.id(), m1, t2.id(), m2 ) ;
+				case types.DefinitionType:{
+					if( t1.definition() !== t2.definition() )
+						return false;
+					
+					var t1s = t1.args();
+					var t2s = t2.args();
+					if( t1s.length !== t2s.length )
+						return false;
+					for( var i=0;i<t1s.length;++i )
+						if( !equalsTo( t1s[i], t2s[i] ) )
+							return false;
+					return true;
 				}
 				default:
 					error( "Not expecting " +t2.type );
 				}
 		}
 
-		return equalsTo( a, new LMap(null), b, new LMap(null) );
+		return equalsTo( a, b );
 	};
 	
 	/**
@@ -953,13 +874,13 @@ var TypeChecker = (function(AST,assertF){
 	 * @param {Type} t2
 	 * @return {Boolean} true if t1 <: t2 (if t1 can be used as t2).
 	 */
-	// FIXME: switch to equals kind of algorithm?
 	var subtypeOf = function( t1 , t2 ){
+
 		var table = new Table(equals);
 
 		var subtype = function( t1, m1, t2, m2 ){
 	
-			if( t1 === t2 || equals(t1,t2) ) // A <: A
+			if( t1 === t2 ) //|| equals(t1,t2) ) // A <: A
 				return true;
 				
 			if( table.seen( t1, t2 ) )
@@ -968,115 +889,6 @@ var TypeChecker = (function(AST,assertF){
 			// "pure to linear" - ( t1: !A ) <: ( t2: A )
 			if ( t1.type === types.BangType && t2.type !== types.BangType )
 				return subtype( t1.inner(), m1, t2, m2 );
-
-			//debugger;
-			/*
-			if( t2.type === types.AlternativeType &&
-					t1.type !== types.AlternativeType ){
-						debugger
-				var i2s = t2.inner();
-				// attempt to find one valid alternative
-				for( var i=0;i<i2s.length;++i){
-					if( subtype(t1,i2s[i]) )
-						return true;
-				}
-			} */
-			
-			var var1 = t1.type === types.TypeVariable;
-			var var2 = t2.type === types.TypeVariable;
-			if( var1 ^ var2 ){
-				if( var1 ){
-					t1 = m1.get( t1.name() );
-					// some problem on getting the variable's definition
-					// assume it is not equal.
-					if( t1 === undefined )
-						return false; // FIXME: does not work correctly with alternatives...
-				}
-				if( var2 ){
-					t2 = m2.get( t2.name() );
-					if( t2 === undefined )
-						return false;
-				}
-				
-				return subtype( t1, m1, t2, m2 );
-			}
-			
-			// recursive types must be handled before hand
-			// handle asymmetric comparision of recursive types
-			var rec1 = t1.type === types.RecursiveType;
-			var rec2 = t2.type === types.RecursiveType;
-			if( rec1 ^ rec2 ){
-				
-				table.push( t1, t2 ); // assume they are the same
-				// if this is wrong, then it must be cause their internals
-				// are different. Therefore, it will fail elsewhere and it is
-				// OK to assume they are equal in here.
-
-				if( rec1 ){
-					m1 = m1.newScope();
-					m1.set( t1.id().name(), t1 );
-					t1 = t1.inner();
-				}
-				if( rec2 ){
-					m2 = m2.newScope();
-					m2.set( t2.id().name(), t2 );
-					t2 = t2.inner();
-				}
-				
-				return subtype( t1, m1, t2, m2 );
-			}
-			
-			var del1 = t1.type === types.DelayedApp;
-			var del2 = t2.type === types.DelayedApp;
-			if( del1 ^ del2 ){
-				//debugger;
-				//push( t1, t2 );
-
-				if( del1 ){
-					// special (ad-hoc?) lookahead
-					if( t1.inner().type === types.RecursiveType &&
-						t1.inner().inner().type === types.ForallType ){				
-						var v = t1.id();
-						var rec = t1.inner();
-						var forall = rec.inner();
-						
-						// recursive type
-						m1 = m1.newScope();
-						m1.set( rec.id().name(), rec );
-						
-						// TRANSITIVITY: must ensure is considered same as other
-						table.transitivity( v.name(), forall.id().name(), false );
-	
-						t1 = forall.inner();
-
-						return subtype( t1, m1, t2, m2 );
-					}
-				}
-				
-				if( del2 ){
-					// special (ad-hoc?) lookahead
-					if( t2.inner().type === types.RecursiveType &&
-						t2.inner().inner().type === types.ForallType ){				
-//console.debug( t1 +' \n\tVS ' +t2 );
-						var v = t2.id();
-						var rec = t2.inner();
-						var forall = rec.inner();
-						
-						// recursive type
-						m2 = m2.newScope();
-						m2.set( rec.id().name(), rec );
-												
-						// TRANSITIVITY: must ensure is considered same as other
-						table.transitivity( v.name(), forall.id().name(), true );
-	
-						t2 = forall.inner();
-
-						return subtype( t1, m1, t2, m2 );
-					}
-				}
-			}
-			
-			// ----
 	
 			// types that can be "banged"
 			if ( t2.type === types.BangType &&
@@ -1088,6 +900,23 @@ var TypeChecker = (function(AST,assertF){
 			// "ref" t1: (ref p) <: !(ref p)
 			if ( t1.type === types.ReferenceType && t2.type === types.BangType )
 				return subtype( t1, m1, t2.inner(), m2 );
+			
+			// about to fail because they are of different type kind
+			// attempt to unfold type definitions!
+			// Only tries to unfold definition if it appears that it will help. 
+//XXX: this is a very shallow lookup. won't work with more than 2 typedefs in sequence
+			var def1 = t1.type === types.DefinitionType;
+			var def2 = t2.type === types.DefinitionType;
+			if( def1 ^ def2 ){
+				if( def1 && typedefs[t1.definition()].type === t2.type ){
+					t1 = unfoldDefinition(t1);
+					return subtype( t1, m1, t2, m2 );
+				}
+				if( def2 && typedefs[t2.definition()].type === t1.type ){
+					t2 = unfoldDefinition(t2);
+					return subtype( t1, m1, t2, m2 );
+				}
+			}
 			
 			// all remaining rule require equal kind of type
 			if( t1.type !== t2.type ){
@@ -1146,7 +975,7 @@ var TypeChecker = (function(AST,assertF){
 				case types.StackedType:
 					return subtype( t1.left(), m1, t2.left(), m2 ) &&
 						subtype( t1.right(), m1, t2.right(), m2 );
-				case types.AlternativeType: //FIXME this should move...
+				case types.AlternativeType:
 				case types.StarType:{
 					var i1s = t1.inner();
 					var i2s = t2.inner();
@@ -1186,7 +1015,7 @@ var TypeChecker = (function(AST,assertF){
 					return subtype( t1.location(), m1, t2.location(), m2 ) &&
 						subtype( t1.value(), m1, t2.value(), m2 );
 				
-				case types.RecursiveType:
+				//case types.RecursiveType:
 				case types.ForallType:		
 				case types.ExistsType:{
 					// uses environment to know the relation between the two names
@@ -1218,17 +1047,26 @@ var TypeChecker = (function(AST,assertF){
 					
 					return subtype( a1, m1, a2, m2 );	
 				}
-				case types.DelayedApp: {
-					return subtype( t1.inner(), m1, t2.inner(), m2 ) &&
-						subtype( t1.id(), m1, t2.id(), m2 ) ;
+
+				case types.DefinitionType:{
+					if( t1.definition() !== t2.definition() )
+						return false;
+					
+					var t1s = t1.args();
+					var t2s = t2.args();
+					if( t1s.length !== t2s.length )
+						return false;
+					for( var i=0;i<t1s.length;++i )
+						if( !subtype( t1s[i], m1, t2s[i], m2 ) )
+							return false;
+					return true;
 				}
 				default:
-					error( "Not expecting " +t1.type );
+					error( "@subtype: Not expecting " +t1.type );
 			}
 			
 		};
-		return subtype( t1, new LMap(null),
-						t2, new LMap(null)  );
+		return subtype( t1, new LMap(null), t2, new LMap(null)  );
 	}
 	
 	//
@@ -1525,7 +1363,15 @@ var TypeChecker = (function(AST,assertF){
 				return false;
 			}
 			case types.RelyType:{
-				return cap.rely().location().name() === name;
+				var rely = cap.rely();
+				if( rely.type === types.DefinitionType ){
+					rely = unfoldDefinition(rely);
+				}
+				return rely.location().name() === name;
+			}
+			case types.DefinitionType:{
+				var tmp = unfoldDefinition(cap);
+				return capContains(name,tmp); 
 			}
 			default:
 				// another types disallowed, for now
@@ -1780,8 +1626,8 @@ var TypeChecker = (function(AST,assertF){
 				t = t.inner();
 				continue;
 			}
-			// by unfold: rec X.A <: A[rec X.A/X]
-			if( rec && t.type === types.RecursiveType ){
+			// by unfold definition
+			if( rec && t.type === types.DefinitionType ){
 				// these are not exactly perfect but two simple ways to check
 				// if we may be unfolding an unending recursive type
 				// counting is the easiest, the second is the most likely to
@@ -1791,10 +1637,11 @@ var TypeChecker = (function(AST,assertF){
 				see.push( t );
 
 				// unfold
-				t = substitution(t.inner(),t.id(),t);
+				t = unfoldDefinition(t); //substitution(t.inner(),t.id(),t);
 				continue;
 			}
 			
+			/*
 			if( rec && t.type === types.DelayedApp ){
 				if( t.inner().type === types.RecursiveType && 
 					t.inner().inner().type === types.ForallType ){
@@ -1808,7 +1655,7 @@ var TypeChecker = (function(AST,assertF){
 					continue;
 				}
 				
-			}
+			} */
 			
 			break;
 		}
@@ -1868,8 +1715,8 @@ var TypeChecker = (function(AST,assertF){
 		
 	// attempts to convert type to bang, if A <: !A
 	var purify = function(t){
-		t = unAll2(t);
-		
+		//t = unAll2(t);
+//FIXME may need to unfold definition?		
 		if( t.type !== types.BangType ){
 			var tmp = new BangType(t);
 			if( subtypeOf(t,tmp) )
@@ -1898,12 +1745,27 @@ var TypeChecker = (function(AST,assertF){
 		return type;
 	}
 	
+	var unfoldDefinition = function(d){
+		if( d.type !== types.DefinitionType )
+			return d;
+		
+//		debugger
+		var t = typedefs[d.definition()];
+		var args = d.args();
+		var pars = typedefs_args[d.definition()];
+		for(var i=0;i<args.length;++i){
+			t = substitution(t,pars[i],args[i]);
+		}
+		return t;
+	}
+	
 	var unstackType = function(t, d, ast){
 		switch( t.type ){
 		case types.AlternativeType:
 		case types.RelyType:
 		case types.CapabilityType:
 		case types.TypeVariable:
+		// FIXME: is duplication check stil needed??
 			assert( d.setCap( t ) || ('Duplicated capability for '+ t), ast );
 			break;
 		case types.StarType:{
@@ -2568,9 +2430,11 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				
 				// look for type definitions
 				var lookup = typedefs[label];
+				var lookup_args = typedefs_args[label];
 		
 				// found something
-				if( lookup !== undefined && lookup !== null )
+				if( lookup !== undefined && lookup !== null &&
+					 lookup_args.length === 0 )
 					return lookup;
 		
 				assert( 'Unknown type '+label, ast);
@@ -2613,17 +2477,20 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				
 				assert( cap !== undefined || ("No capability to '"+loc+"'"), ast );
 				
+				if( cap.type === types.DefinitionType )
+					cap = unfoldDefinition(cap);
 				assert( cap.type === types.CapabilityType ||
 					(loc+" is not a capability, "+cap.type), ast );
 				
 				var old = cap.value();
-				
+//FIXME unfold definition?
 				var residual;
 				// see if read must be destructive (i.e. leave unit)
 				if( old.type === types.BangType )
 					residual = old;
-				else
+				else {
 					residual = new BangType(new RecordType());
+				}
 				
 				cap = new CapabilityType( cap.location(), residual );
 				assert( env.setCap( cap ) || 'Failed to re-add cap', ast );
@@ -2726,7 +2593,40 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				return res;
 			};
 			
-			case AST.kinds.DELAY_TYPE_APP: 
+			case AST.kinds.DEFINITION_TYPE:
+			return function( ast, env ){
+				var id = ast.name;
+				var args = ast.args;
+				var t_args = typedefs_args[id];
+				
+				assert( t_args !== undefined || ('Unknown typedef: '+id), ast);
+				assert( t_args.length === args.length ||
+					('Argument number mismatch: '+args.length+' vs '+t_args.length), ast);
+
+				var arguments = new Array(args.length);
+				for(var i=0;i<args.length;++i){					
+					var tmp = check( args[i], env );
+
+					if( t_args[i].type === types.LocationVariable ){
+						assert( ( tmp.type === types.LocationVariable ) ||
+							( 'Argument '+i+' is not LocationVariable: '+tmp.type ), 
+							args[i] );
+					}
+					
+					if( t_args[i].type === types.TypeVariable ){
+						assert( ( tmp.type !== types.LocationVariable ) ||
+							( 'Argument '+i+' should not be LocationVariable' ), 
+							args[i] );
+					}
+					
+					arguments[i] = tmp;
+				}
+				
+				return new DefinitionType(id,arguments);
+			};
+			
+			/*
+			case AST.kinds.DELAY_TYPE_APP: // FIXME: remove deprecated type
 			return function( ast, env ){
 				// a delayed type application is a minor trick to simplify the
 				// notation on recursive type definitions so that they can
@@ -2751,6 +2651,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				
 				return new DelayedApp(exp,packed);
 			};
+			*/
 			
 			case AST.kinds.TYPE_APP: 
 			return function( ast, env ){
@@ -2759,6 +2660,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				assert( exp.type === types.ForallType || 
 					('Not a Forall '+exp.toString()), ast.exp );
 				
+				// FIXME: not checked that it's the correct kind!
 				var packed = check(ast.id, env);
 				return substitution( exp.inner(), exp.id(), packed );
 			};
@@ -2983,7 +2885,9 @@ var checkProtocolConformance = function( s, a, b, ast ){
 					('Unknow Location Variable '+id), ast);
 
 				var type = check( ast.type, env );
-				return new CapabilityType( loc, purify(type) );
+// FIXME do a shallow purify (no unfold of definitions)
+type = purify( type );
+				return new CapabilityType( loc, type );
 			};
 			
 			case AST.kinds.STACKED_TYPE: 
@@ -3006,6 +2910,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				var c = autoStack ( null, cap, env, ast.type );
 				// make sure that the capabilities that were extracted from 
 				// the typing environment can be used as the written cap.
+//debugger
 				assert( subtypeOf( c , cap ) ||
 					('Incompatible capability "'+c+'" vs "'+cap+'"'), ast.type );
 				return new StackedType( exp, cap );
@@ -3181,7 +3086,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 	
 	var type_info;
 	var unique_counter;
-	var typedefs;
+	var typedefs, typedefs_args;
 	
 	exports.check = function(ast,typeinfo,loader){
 		// This is a hack of some sort to enable testing of the inner components
@@ -3201,6 +3106,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			// reset typechecke's state.
 			unique_counter = 0;
 			typedefs = {};
+			typedefs_args = {};
 			var env = new Environment(null);
 				
 			if( ast.imports !== null ){
@@ -3218,15 +3124,49 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			}
 				
 			if( ast.typedefs !== null ){
+				// typedefs[i] - id:id, type:type, pars:pars
+				
+				// first phase - extract all argument definitions, note that
+				// duplication is not checked at this stage
+				for(var i=0;i<ast.typedefs.length;++i){
+					var it = ast.typedefs[i];
+					var args = [];
+					var pars = it.pars;
+
+					// only do this if there are any actual definition parameters
+					if( pars !== null ){
+						args = new Array(pars.length);
+						
+						for(var j=0;j<pars.length;++j){
+							var n = pars[j];
+							args[j] = isTypeVariableName(n) ? 
+								new TypeVariable(n) : new LocationVariable(n);
+						}
+					}
+					typedefs_args[ast.typedefs[i].id] = args;
+				}
+				//debugger
 				for(var i=0;i<ast.typedefs.length;++i){
 					var type = ast.typedefs[i];
 					assert( !typedefs.hasOwnProperty(type.id) ||
 						('Duplicated typedef: '+type.id), type )
+						
+					var tmp_env = env.newScope();
+					var args = typedefs_args[type.id];
+					
+					// sets the variables, if there are any to setup
+					if( args !== null ){
+						for(var j=0;j<args.length;++j){
+							// should be both for LocationVariables and TypeVariables
+							tmp_env.setType( args[j].name(), args[j] );
+						}
+					}
+					
 					// map of type names to typechecker types.
-					typedefs[type.id] = check( type.type, env );
+					typedefs[type.id] = check( type.type, tmp_env );
 				}
+				
 			}
-			
 			return check( ast.exp, env );
 		} finally {
 			if( typeinfo ){

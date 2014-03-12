@@ -6,14 +6,14 @@ import abort
 import println
 
 // head node
-typedef H = rec X.forall p.(
-			( rw p !(Empty#[]) => rw p !(Empty#[]) ; (X[p]) ) (+)
+typedef H<p> = // note the two recursions
+			( rw p !(Empty#[]) => rw p !(Empty#[]) ; (H[p]) ) (+)
 			( rw p (Closed#[]) => none ) (+) 
-			( rw p (Node#[int,exists q.(!ref q :: (X[q]) )]) => none ) )
+			( rw p (Node#[int,exists q.(!ref q :: (H[q]) )]) => none )
 
 // tail node
-typedef T = forall p.( rw p !(Empty#[]) =>
-	( (rw p (Closed#[])) (+) (rw p (Node#[int,exists q.(!ref q :: (H[q]))]))) )
+typedef T<p> =  rw p !(Empty#[]) =>
+	( (rw p !(Closed#[])) (+) (rw p (Node#[int,exists q.(!ref q :: (H[q]))])) )
 
 let newPipe = fun( _ : [] ).
 	// initial node to be shared:
