@@ -224,6 +224,10 @@ a:visited {
 	color: blue;
 }
 
+.type_fun{
+	/* font-size: 12pt; //TODO multimap symbol is messed up */
+}
+
 .type_variable{
 	color: green;
 }

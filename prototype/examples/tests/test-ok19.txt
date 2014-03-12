@@ -1,8 +1,6 @@
 //OK {0,Function Value,Function Value,Function Value,Function Value,Function Value}
 //OK [exists A.A,!(rec A.(test#A+fail#int) -o exists R.(test#rec A.(test#A+fail#int)+fail#int)),!(rec A.(a#A+b#int) -o exists YY.YY),!(rec A.(case1#A+case2#int) -o (Meh#exists R.R+Number#!int)),!(rec A.(l#A+q#int) -o exists TT.TT),!(rec A.(case1#rec A.(case1#A+case2#int)+case2#int) -o (Meh#exists R.R))]
 
-//OLD RESULT
-//   [exists A.A,!(rec A.(test#A+fail#int) -o exists R.rec A.(test#A+fail#int)),!(rec A.(a#A+b#int) -o exists YY.YY),!(rec A.(case1#A+case2#int) -o (Meh#exists R.R+Number#!int)),!(rec A.(l#A+q#int) -o exists TT.TT),!(rec A.(case1#rec A.(case1#A+case2#int)+case2#int) -o (Meh#exists R.R))]
 {
 
 // hides int, then hides abstraction

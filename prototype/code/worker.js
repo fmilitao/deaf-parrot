@@ -447,7 +447,8 @@ var toHTML = function (t){
 		case types.FunctionType:
 			return wq( 
 				wq( _toHTML(t.argument()) ) +
-				wQ( " &#x22b8; " ) +
+				wQ( ' &#x22b8; ' ) +
+				//wQ( '<span class="type_fun"> &#x22b8; </span>' ) +
 				wq( _toHTML(t.body()) )
 				);
 		case types.BangType:{

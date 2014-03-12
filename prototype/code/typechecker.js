@@ -1496,125 +1496,44 @@ var TypeChecker = (function(AST,assertF){
 	}
 
 	/*
-	 * Normalizes type.
-	 * 
-	 * Unfolds recursion (and delayed type application), and removes banged
-	 * types, normalizes the type so that it can be directly used.
-	 * 
-	 * bang -- if it is to remove bang: !A <: A
-	 * rec -- if it is to unfold rec: rec X.A <: A[rec X.A/X]
+	 * bang -- remove bang(s)? !A <: A
+	 * rec -- unfold recursive definition(s)?
 	 */
-	var unAll = function(tt,ast,bang,rec){
-		// the following are safeguards to bound execution
-		var see = [];
-		var seen = function(a){
-			//return see.indexOf( a ) !== -1;
-			for(var i=0;i<see.length;++i){
-				if(see[i] === a || equals(see[i],t) )
-					return true;
-			}
-			return false;
-		};
-		var visited = 0;
+	var unAll = function(t,bang,rec){
+		var MAX = 100;
 		
-		var t = tt;
-		while( true ) {
+		while( MAX-->0 ){
+			
 			// by subtyping rule: !A <: A
 			if( bang && t.type === types.BangType ){
 				t = t.inner();
 				continue;
 			}
+			
 			// by unfold definition
 			if( rec && t.type === types.DefinitionType ){
-				// these are not exactly perfect but two simple ways to check
-				// if we may be unfolding an unending recursive type
-				// counting is the easiest, the second is the most likely to
-				// catch such pointless loops earlier.
-				assert( (++visited) < 100 || ('Failed to unfold: '+tt +', max unfolds reached'), ast);
-				assert( !seen( t ) || ('Fix-point reached after '+visited+' unfolds') , ast);
-				see.push( t );
-
-				// unfold
-				t = unfoldDefinition(t); //substitution(t.inner(),t.id(),t);
+				t = unfoldDefinition(t);
 				continue;
-			}
-			
-			/*
-			if( rec && t.type === types.DelayedApp ){
-				if( t.inner().type === types.RecursiveType && 
-					t.inner().inner().type === types.ForallType ){
-					var v = t.id();
-					var rec = t.inner();
-					
-					// expand inner recursion
-					t = substitution(rec.inner(),rec.id(),rec);
-					// do type application
-					t = substitution(t.inner(),t.id(),v);
-					continue;
-				}
-				
-			} */
-			
-			break;
-		}
-		return t;
-	}
-	
-	// only for recursion, and returns same on fail unfold
-	var unAll2 = function(tt){
-		// the following are safeguards to bound execution
-		var see = [];
-		var seen = function(a){
-			//return see.indexOf( a ) !== -1;
-			for(var i=0;i<see.length;++i){
-				if(see[i] === a || equals(see[i],t) )
-					return true;
-			}
-			return false;
-		};
-		var visited = 0;
-		
-		var t = tt;
-		while( true ) {
-			// by unfold: rec X.A <: A[rec X.A/X]
-			if( t.type === types.RecursiveType ){
-				// these are not exactly perfect but two simple ways to check
-				// if we may be unfolding an unending recursive type
-				// counting is the easiest, the second is the most likely to
-				// catch such pointless loops earlier.
-				if( (++visited) >= 10  || seen( t ) )
-					return t; // cannot unfold more, give the same type
-				see.push( t );
-
-				// unfold
-				t = substitution(t.inner(),t.id(),t);
-				continue;
-			}
-			
-			if( t.type === types.DelayedApp ){
-				if( t.inner().type === types.RecursiveType && 
-					t.inner().inner().type === types.ForallType ){
-					var v = t.id();
-					var rec = t.inner();
-					
-					// expand inner recursion
-					t = substitution(rec.inner(),rec.id(),rec);
-					// do type application
-					t = substitution(t.inner(),t.id(),v);
-					continue;
-				}
-				
 			}
 			
 			break;
 		}
+
+		if( MAX === 0 ){
+			console.debug('@unAll: MAX UNFOLD REACHED, '+t);
+			// returns whatever we got, will likely fail due to a packed
+			// definition anyway. But it's not our fault that you gave us a type
+			// that is bogus/infinite recursive!
+//XXX statically detect infinitely recursive type definitions?
+		}
 		return t;
+
 	}
 		
 	// attempts to convert type to bang, if A <: !A
 	var purify = function(t){
-		//t = unAll2(t);
-//FIXME may need to unfold definition?		
+//FIXME may need to unfold definition?
+		t = unAll(t,false,true);	// FIXME tmp	
 		if( t.type !== types.BangType ){
 			var tmp = new BangType(t);
 			if( subtypeOf(t,tmp) )
@@ -1633,7 +1552,7 @@ var TypeChecker = (function(AST,assertF){
 	var unstack = function( type, d, ast ){
 		if( type.type === types.StackedType ){
 			// all types are on the right, recursion is on left
-			var right = unAll(type.right(),ast, false, true);
+			var right = unAll(type.right(), false, true);
 			unstackType( right, d, ast );
 			//unstackType( type.right(), d, ast );
 			
@@ -1693,7 +1612,7 @@ var TypeChecker = (function(AST,assertF){
 	 */
 	var autoStack = function(t,p,e,a){
 		// FIXME, rethink now that there exists a cap search...
-		p = unAll(p,null,false,true);
+		p = unAll(p,false,true);
 		
 		switch( p.type ) {
 			case types.StarType: {
@@ -1933,7 +1852,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 	
 	var sim = function(s,p){
 		// unfold recursive types, etc.
-		p = unAll(p,undefined,false,true);
+		p = unAll(p,false,true);
 		
 		// first protocol
 		if( p.type === types.NoneType )
@@ -1977,7 +1896,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				'step:\t'+p, ast );
 		}
 		
-		var pp = unAll( p, undefined, false, true );
+		var pp = unAll( p, false, true );
 		
 		assert( pp.type === types.RelyType ||
 			('Expecting RelyType, got: '+pp.type+'\n'+pp), ast);
@@ -2071,7 +1990,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			case AST.kinds.LET_TUPLE: 
 			return function( ast, env ){
 				var exp = check( ast.val, env );
-				exp = unAll(exp, ast.val, true, true);
+				exp = unAll(exp, true, true);
 				assert( exp.type === types.TupleType ||
 					("Type '" + exp + "' not tuple"), ast.exp);
 				
@@ -2092,7 +2011,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			case AST.kinds.OPEN: 
 			return function( ast, env ){
 				var value = check( ast.val, env );
-				value = unAll( value, ast.val, true, true );
+				value = unAll( value, true, true );
 				
 				assert( value.type === types.ExistsType ||
 					("Type '" + value + "' not existential"), ast.exp);
@@ -2110,7 +2029,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 
 				value = substitution( value.inner(), value.id(), locvar );
 				// unfold anything that became newly available
-				value = unAll( value, ast, false, true );
+				value = unAll( value, false, true );
 				
 				// any unstack occurs in the inner expression
 				var e = env.newScope();
@@ -2129,7 +2048,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			
 			case AST.kinds.CASE: 
 			return function( ast, env ){
-				var val = unAll( check( ast.exp, env ), ast.exp, true, true );
+				var val = unAll( check( ast.exp, env ), true, true );
 				assert( val.type === types.SumType ||
 					("'" + val.type + "' not a SumType"), ast);
 				
@@ -2259,7 +2178,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				for( var i=0; i<alts.length; ++i ){
 					var tmp_env = end_env === null ? env : env_start.clone();
 					var alternative = alts[i];
-					alternative = unAll(alternative, undefined, false, true);
+					alternative = unAll(alternative, false, true);
 					unstackType( alternative, tmp_env, ast.type );
 
 					var res = check( ast.exp, tmp_env );
@@ -2365,7 +2284,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			
 			case AST.kinds.DEREF: 
 			return function( ast, env ){
-				var exp = unAll( check( ast.exp, env ), ast.exp, true, true );
+				var exp = unAll( check( ast.exp, env ), true, true );
 				
 				assert( exp.type === types.ReferenceType ||
 					("Invalid dereference '"+exp+"'"), ast );
@@ -2397,7 +2316,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			
 			case AST.kinds.DELETE: 
 			return function( ast, env ){
-				var exp = unAll( check( ast.exp, env ), ast.exp, true, true );
+				var exp = unAll( check( ast.exp, env ), true, true );
 				
 				if( exp.type === types.ReferenceType ){
 					var loc = exp.location().name();
@@ -2415,7 +2334,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 					// Luis' delete rule...
 					var inner = exp.inner();
 					if( inner.type === types.StackedType ){
-						var ref = unAll( inner.left(), ast, true, true );
+						var ref = unAll( inner.left(), true, true );
 						var cap = inner.right();
 						assert( ref.type === types.ReferenceType ||
 							("Expecting reference '"+exp+"'"), ast);
@@ -2434,7 +2353,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 
 			case AST.kinds.ASSIGN: 
 			return function( ast, env ){
-				var lvalue = unAll( check( ast.lvalue, env ), ast.lvalue, true, true );
+				var lvalue = unAll( check( ast.lvalue, env ), true, true );
 				var value = check( ast.exp, env );
 				
 				assert( lvalue.type === types.ReferenceType ||
@@ -2457,7 +2376,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			case AST.kinds.SELECT: 
 			return function( ast, env ){
 				var id = ast.right;
-				var rec = unAll( check( ast.left, env ), ast.left, true, true );
+				var rec = unAll( check( ast.left, env ), true, true );
 				
 				assert( rec.type === types.RecordType ||
 					("Invalid field selection '"+id+"' for '"+rec+"'"), ast );
@@ -2469,7 +2388,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			
 			case AST.kinds.CALL: 
 			return function( ast, env ){
-				var fun = unAll( check( ast.fun, env ), ast.fun, true, true );
+				var fun = unAll( check( ast.fun, env ), true, true );
 				
 				assert( fun.type === types.FunctionType ||
 					('Type '+fun.toString()+' not a function'), ast.fun );
@@ -2523,38 +2442,10 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				return new DefinitionType(id,arguments);
 			};
 			
-			/*
-			case AST.kinds.DELAY_TYPE_APP: // FIXME: remove deprecated type
-			return function( ast, env ){
-				// a delayed type application is a minor trick to simplify the
-				// notation on recursive type definitions so that they can
-				// abstract their locations without much trouble.
-				var exp = check( ast.exp, env );
-				exp = unAll(exp,ast.exp, true, true);
-				var packed = check(ast.id, env); // the type to apply
-
-				if( exp.type === types.ForallType ){
-					// can be applied immediately
-					return substitution( exp.inner(), exp.id(), packed );
-				}
-				assert( packed.type === types.TypeVariable ||
-					packed.type === types.LocationVariable || 
-					('Expecting variable, got: '+packed), ast.id );
-
-				// application cannot occur right now, but delayed applications
-				// are only allowed on (bounded) type variables 
-				assert( exp.type === types.TypeVariable ||
-					exp.type === types.DelayedApp || // for nested delays 
-					('Expecting TypeVariable, got: '+exp), ast.exp );
-				
-				return new DelayedApp(exp,packed);
-			};
-			*/
-			
 			case AST.kinds.TYPE_APP: 
 			return function( ast, env ){
 				var exp = check( ast.exp, env );
-				exp = unAll(exp,ast.exp, true, true);
+				exp = unAll(exp, true, true);
 				assert( exp.type === types.ForallType || 
 					('Not a Forall '+exp.toString()), ast.exp );
 				
@@ -2626,8 +2517,8 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				 */
 				checkProtocolConformance(cap, left, right, ast);
 				
-				env.setCap( unAll(left, undefined, false, true) );
-				env.setCap( unAll(right, undefined, false, true) );
+				env.setCap( unAll(left, false, true) );
+				env.setCap( unAll(right, false, true) );
 				// returns unit
 				return new BangType(new RecordType());
 			};
@@ -2677,7 +2568,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				env.defocus();
 				
 				unstackType(
-					unAll( dg.rely(),ast, false, true) 
+					unAll( dg.rely(), false, true) 
 					, env, ast );
 				return new BangType(new RecordType());
 			};
@@ -2803,7 +2694,7 @@ type = purify( type );
 				var cap = check( ast.type, env );
 				
 // FIXME broken
-				cap = unAll(cap,ast,false,true);
+				cap = unAll(cap,false,true);
 				
 				var c = autoStack ( null, cap, env, ast.type );
 				// make sure that the capabilities that were extracted from 
