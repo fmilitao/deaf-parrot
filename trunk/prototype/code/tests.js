@@ -344,32 +344,8 @@ module('Typechecker.Components');
 			t_alt2.add( t_int );
 			equal( equals( t_alt2, t_alt1 ), false );
 			equal( equals( t_alt1, t_alt2 ), false );
-						
-			// recursive types
-			var t_r1 = new t.RecursiveType(new t.TypeVariable('X'),new t.TypeVariable('X'));
-			var t_r2 = new t.RecursiveType(new t.TypeVariable('Y'),new t.TypeVariable('Y'));
-			equal( equals( t_r1, t_r2 ), true );
-			
-			// rec X.(a#int + b#X) === rec Y.( (b#rec Z.(b#Z + a#int)) + a#int )
-			var t_tmp1 = new t.SumType();
-			t_tmp1.add('a',t_int);
-			t_tmp1.add('b',new t.TypeVariable('X'));
-			var t_r3 = new t.RecursiveType(new t.TypeVariable('X'),t_tmp1);
-			
-			var t_tmp2 = new t.SumType();
-			t_tmp2.add('b',new t.TypeVariable('Z'));
-			t_tmp2.add('a',t_int);
-			var t_r4 = new t.RecursiveType(new t.TypeVariable('Z'),t_tmp2);
-			
-			var t_tmp3 = new t.SumType();
-			t_tmp3.add('a',t_int);
-			t_tmp3.add('b',t_r4);
-			
-			equal( equals( t_tmp3, t_r3 ), true );
-			equal( equals( t_tmp3, t_r4 ), true );
-			equal( equals( t_tmp3, t_tmp2 ), false );
 
-			// FIXME delayed app
+// TODO testing renaming, cycles (typedefinitions)
 		});
 	} );
 
@@ -558,7 +534,7 @@ module('Typechecker.Components');
 			var t_f3 = new t.ForallType(new t.TypeVariable('Z'),new t.BangType(new t.TypeVariable('Z')));
 			equal( subtype( t_f1, t_f2 ), true );
 			equal( subtype( t_f1, t_f3 ), false );
-			//equal( subtype( t_f3, t_f1 ), false ); //FIXME bug
+			equal( subtype( t_f3, t_f1 ), true );
 			
 			var t_e1 = new t.ExistsType(new t.TypeVariable('X'),new t.TypeVariable('X')); // exists X.X
 			var t_e2 = new t.ExistsType(new t.TypeVariable('Y'),new t.TypeVariable('Y')); // exists Y.Y
@@ -578,23 +554,12 @@ module('Typechecker.Components');
 			t_alt1.add(new t.TypeVariable('X'));
 			t_alt1.add(new t.TypeVariable('Z'));
 
-			//equal( subtype(t_alt1,t_alt2), true); //FIXME bug
 			equal( subtype(t_alt2,t_alt1), false);
-			//equal( subtype(new t.TypeVariable('X'), t_alt1), true ); // FIXME bug X <: X  (+) Y
-			
-			var t_rec1 = new t.RecursiveType(new t.TypeVariable('X'),new t.BangType( new t.TypeVariable('X')));
-			var t_rec2 = new t.BangType(new t.RecursiveType(new t.TypeVariable('X'),new t.BangType( new t.TypeVariable('X'))));
-			equal( subtype(t_rec1,t_rec2), true);
-			
-			//rec X. ![ name : []] <: !(rec X. ![ name : []])
-			var tmp_rec = new t.RecordType();
-			tmp_rec.add('name',new t.RecordType());
-			t_rec1 = new t.RecursiveType(new t.TypeVariable('X'),new t.BangType(tmp_rec));
-			t_rec2 = new t.BangType( new t.RecursiveType(new t.TypeVariable('X'),new t.BangType(tmp_rec)) );
+			// FIXME bugs due to missing X <: X  (+) Y subtype rule:
+			//equal( subtype(t_alt1,t_alt2), true);
+			//equal( subtype(new t.TypeVariable('X'), t_alt1), true ); 
 
-			equal( subtype(t_rec1,t_rec2), true); // ?
-			
-			// FIXME delayed app, recursive types
+// TODO renaming, cycles, type definitions.
 		} );
 	});
 
