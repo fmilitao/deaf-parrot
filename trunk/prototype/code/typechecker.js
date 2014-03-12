@@ -626,74 +626,7 @@ var TypeChecker = (function(AST,assertF){
 	var substitution = function(t,from,to){
 		return substitutionF(t,from,to,equals);
 	};
-
-	/*
-	 * 
-	 */
 	
-	var Table = function(eq){
-		var visited = [];
-		
-		// default compare function is pointer equality
-		if( eq === undefined ){
-			eq = function(a,b){
-				return a===b;
-			}
-		}
-		
-		this.seen = function(a,b){
-			for(var i=0;i<visited.length;++i){
-				if( eq(visited[i][0],a) && eq(visited[i][1],b) )
-					return true;
-			}
-			return false;
-		};
-		
-		this.push = function(a,b){
-			visited.push( [a,b] );
-		};
-		
-		this.transitivity = function(a,b,left){
-			var tmp = [];
-			for(var i=0;i<visited.length;++i){
-				if( left ){ // on left
-					if( eq(visited[i][1],a) ){
-						tmp.push( [ visited[i][0], b ] );
-					}
-				}else{ // on right
-					if( eq(visited[i][0],a) ){
-						tmp.push( [ b, visited[i][1] ] );
-					}
-				}
-			}						
-			visited = visited.concat(tmp);
-		}
-	}
-	
-	var LMap = function(parent){
-		// this is similar to Environment, but it should be separate until
-		// Environment's code is completely fixed... only after that will it
-		// be clear if they are the same or not.
-		var map = {};
-				
-		this.newScope = function(){
-			return new LMap(this);
-		}
-		this.set = function(id,value){
-			if ( map.hasOwnProperty(id) )
-				return undefined; // already exists
-			map[id] = value;
-			return true; // ok
-		}
-		this.get = function(id){
-			if ( map.hasOwnProperty(id) )
-				return map[id];
-			if( parent === null )
-				return undefined;
-			return parent.get(id);
-		}
-	}
-
 	//
 	// EQUALS and SUBTYPING
 	//	
@@ -862,199 +795,177 @@ var TypeChecker = (function(AST,assertF){
 	 * @return {Boolean} true if t1 <: t2 (if t1 can be used as t2).
 	 */
 	var subtypeOf = function( t1 , t2 ){
-
-		var table = new Table(equals);
-
-		var subtype = function( t1, m1, t2, m2 ){
 	
-			if( t1 === t2 ) //|| equals(t1,t2) ) // A <: A
-				return true;
+		if( t1 === t2 || equals(t1,t2) ) // A <: A
+			return true;
 				
-			if( table.seen( t1, t2 ) )
-				return true;
-			
-			// "pure to linear" - ( t1: !A ) <: ( t2: A )
-			if ( t1.type === types.BangType && t2.type !== types.BangType )
-				return subtype( t1.inner(), m1, t2, m2 );
+		// "pure to linear" - ( t1: !A ) <: ( t2: A )
+		if ( t1.type === types.BangType && t2.type !== types.BangType )
+			return subtypeOf( t1.inner(), t2 );
 	
-			// types that can be "banged"
-			if ( t2.type === types.BangType &&
-				( t1.type === types.ReferenceType
-				|| t1.type === types.PrimitiveType
-				|| ( t1.type === types.RecordType && t1.isEmpty() ) ) )
-				return subtype( t1, m1, t2.inner(), m2 );
+		// types that can be "banged"
+		if ( t2.type === types.BangType &&
+			( t1.type === types.ReferenceType
+			|| t1.type === types.PrimitiveType
+			|| ( t1.type === types.RecordType && t1.isEmpty() ) ) )
+			return subtypeOf( t1, t2.inner() );
 			
-			// "ref" t1: (ref p) <: !(ref p)
-			if ( t1.type === types.ReferenceType && t2.type === types.BangType )
-				return subtype( t1, m1, t2.inner(), m2 );
+		// "ref" t1: (ref p) <: !(ref p)
+		if ( t1.type === types.ReferenceType && t2.type === types.BangType )
+			return subtypeOf( t1, t2.inner() );
 			
-			// about to fail because they are of different type kind
-			// attempt to unfold type definitions!
-			// Only tries to unfold definition if it appears that it will help. 
+		// about to fail because they are of different type kind
+		// attempt to unfold type definitions!
+		// Only tries to unfold definition if it appears that it will help. 
 //XXX: this is a very shallow lookup. won't work with more than 2 typedefs in sequence
-			var def1 = t1.type === types.DefinitionType;
-			var def2 = t2.type === types.DefinitionType;
-			if( def1 ^ def2 ){
-				if( def1 && typedefs[t1.definition()].type === t2.type ){
-					t1 = unfoldDefinition(t1);
-					return subtype( t1, m1, t2, m2 );
-				}
-				if( def2 && typedefs[t2.definition()].type === t1.type ){
-					t2 = unfoldDefinition(t2);
-					return subtype( t1, m1, t2, m2 );
-				}
+		var def1 = t1.type === types.DefinitionType;
+		var def2 = t2.type === types.DefinitionType;
+		if( def1 ^ def2 ){
+			if( def1 && typedefs[t1.definition()].type === t2.type ){
+				t1 = unfoldDefinition(t1);
+				return subtypeOf( t1, t2 );
 			}
-			
-			// all remaining rule require equal kind of type
-			if( t1.type !== t2.type ){
-				return false;
+			if( def2 && typedefs[t2.definition()].type === t1.type ){
+				t2 = unfoldDefinition(t2);
+				return subtypeOf( t1, t2 );
 			}
+		}
+		
+		// all remaining rule require equal kind of type
+		if( t1.type !== t2.type ){
+			return false;
+		}
 			
-			//else: safe to assume same type from here on
-			switch ( t1.type ){
-				case types.NoneType:
+		//else: safe to assume same type from here on
+		switch ( t1.type ){
+			case types.NoneType:
+				return true;
+			case types.PrimitiveType:
+				return t1.name() === t2.name();
+			case types.BangType:
+				// if t2 is unit: "top" rule
+				if( t2.inner().type === types.RecordType && t2.inner().isEmpty() )
 					return true;
-				case types.PrimitiveType:
-					return t1.name() === t2.name();
-				case types.BangType:
-					// if t2 is unit: "top" rule
-					if( t2.inner().type === types.RecordType && t2.inner().isEmpty() )
-						return true;
-					return subtype( t1.inner(), m1, t2.inner(), m2 );
-				case types.ReferenceType:
-					return subtype( t1.location(), m1, t2.location(), m2 );
-				case types.RelyType: {
-					return subtype( t1.rely(), m1, t2.rely(), m2 ) &&
-						subtype( t1.guarantee(), m1, t2.guarantee(), m2 );
-				}
-				case types.GuaranteeType: {
-					return subtype( t1.guarantee(), m1, t2.guarantee(), m2 ) &&
-						subtype( t1.rely(), m1, t2.rely(), m2 );
-				}
-				case types.FunctionType:
-					return subtype( t2.argument(), m2, t1.argument(), m1 )
-						&& subtype( t1.body(), m1, t2.body(), m2 );
-				case types.RecordType:{
-					if( !t1.isEmpty() && t2.isEmpty() )
-						return false;
+				return subtypeOf( t1.inner(), t2.inner() );
+			case types.ReferenceType:
+				return subtypeOf( t1.location(), t2.location() );
+			case types.RelyType: {
+				return subtypeOf( t1.rely(), t2.rely() ) &&
+					subtypeOf( t1.guarantee(), t2.guarantee() );
+			}
+			case types.GuaranteeType: {
+				return subtypeOf( t1.guarantee(), t2.guarantee() ) &&
+					subtypeOf( t1.rely(), t2.rely() );
+			}
+			case types.FunctionType:
+				return subtypeOf( t2.argument(), t1.argument() )
+					&& subtypeOf( t1.body(), t2.body() );
+			case types.RecordType:{
+				if( !t1.isEmpty() && t2.isEmpty() )
+					return false;
 
-					// all fields of t2 must be in t1
-					var t1fields = t1.getFields();
-					var t2fields = t2.getFields();				
-					for( var i in t2fields ){
-						if( !t1fields.hasOwnProperty(i) ||
-							!subtype( t1fields[i], m1, t2fields[i], m2 ) ){
-							return false;
-						}
-					}
-					return true;
-				}
-				case types.TupleType: {
-					var t1s = t1.getValues();
-					var t2s = t2.getValues();
-					if( t1s.length !== t2s.length )
+				// all fields of t2 must be in t1
+				var t1fields = t1.getFields();
+				var t2fields = t2.getFields();				
+				for( var i in t2fields ){
+					if( !t1fields.hasOwnProperty(i) ||
+						!subtypeOf( t1fields[i], t2fields[i] ) ){
 						return false;
-					for( var i=0;i<t1s.length;++i )
-						if( !subtype( t1s[i], m1, t2s[i], m2 ) )
-							return false;
-					return true;
+					}
 				}
-				case types.StackedType:
-					return subtype( t1.left(), m1, t2.left(), m2 ) &&
-						subtype( t1.right(), m1, t2.right(), m2 );
-				case types.AlternativeType:
-				case types.StarType:{
-					var i1s = t1.inner();
-					var i2s = t2.inner();
-					
-					if( i1s.length !== i2s.length )
+				return true;
+			}
+			case types.TupleType: {
+				var t1s = t1.getValues();
+				var t2s = t2.getValues();
+				if( t1s.length !== t2s.length )
+					return false;
+				for( var i=0;i<t1s.length;++i )
+					if( !subtypeOf( t1s[i], t2s[i] ) )
 						return false;
-					// for *-type, any order will do
-					var tmp_i2s = i2s.slice(0); // copies array
-					for(var i=0;i<i1s.length;++i){
-						var curr = i1s[i];
-						var found = false;
-						for(var j=0;j<tmp_i2s.length;++j){
-							var tmp = tmp_i2s[j];
-							if( subtype(curr,m1,tmp,m2) ){
-								tmp_i2s.splice(j,1); // removes element
-								found = true;
-								break; // continue to next
-							}
-						}
-						if( !found )
-							return false;
-					}
-					return true;
-				}
-				case types.SumType:{
-					var i1s = t1.tags();
-					var i2s = t2.tags();
-					for( var i in i1s ){
-						var j = t2.inner(i1s[i]);
-						if( j === undefined || // if tag is missing, or
-							!subtype( t1.inner(i1s[i]), m1, j, m2 ) )
-							return false;
-					}
-					return true;
-				}
-				case types.CapabilityType:
-					return subtype( t1.location(), m1, t2.location(), m2 ) &&
-						subtype( t1.value(), m1, t2.value(), m2 );
+				return true;
+			}
+			case types.StackedType:
+				return subtypeOf( t1.left(), t2.left() ) &&
+					subtypeOf( t1.right(), t2.right() );
+			case types.AlternativeType:
+			case types.StarType:{
+				var i1s = t1.inner();
+				var i2s = t2.inner();
 				
-				//case types.RecursiveType:
-				case types.ForallType:		
-				case types.ExistsType:{
-					// uses environment to know the relation between the two names
-					// instead of having to renamed the type to ensure matching
-					// labels on their inner types.
-					var n1 = m1.newScope();
-					var n2 = m2.newScope();
-					n1.set( t1.id().name(), t1 );
-					n2.set( t2.id().name(), t2 );
-					
-					table.push( t1.id(), t2.id() ); // assume they are subtypes
-
-					return subtype( t1.inner(), n1, t2.inner(), n2 );
-				}
-
-				case types.TypeVariable:
-				case types.LocationVariable: {
-					var a1 = m1.get( t1.name() );
-					var a2 = m2.get( t2.name() );
-					
-					// note it also returns 'undefined' when name not bound
-					// thus, if the variable is unknown (i.e. declared in the
-					// context and not in the type) we can only compare its name
-					if( a1 === undefined && a2 === undefined )
-						return t1.name() === t2.name();
-					
-					error( ( a1 !== undefined && a2 !== undefined )
-						|| ( 'Program error '+t1+' '+t2+' '+a1+' '+a2 ) );
-					
-					return subtype( a1, m1, a2, m2 );	
-				}
-
-				case types.DefinitionType:{
-					if( t1.definition() !== t2.definition() )
+				if( i1s.length !== i2s.length )
+					return false;
+				// for *-type, any order will do
+				var tmp_i2s = i2s.slice(0); // copies array
+				for(var i=0;i<i1s.length;++i){
+					var curr = i1s[i];
+					var found = false;
+					for(var j=0;j<tmp_i2s.length;++j){
+						var tmp = tmp_i2s[j];
+						if( subtypeOf(curr,tmp) ){
+							tmp_i2s.splice(j,1); // removes element
+							found = true;
+							break; // continue to next
+						}
+					}
+					if( !found )
 						return false;
-					
-					var t1s = t1.args();
-					var t2s = t2.args();
-					if( t1s.length !== t2s.length )
-						return false;
-					for( var i=0;i<t1s.length;++i )
-						if( !subtype( t1s[i], m1, t2s[i], m2 ) )
-							return false;
-					return true;
 				}
-				default:
-					error( "@subtype: Not expecting " +t1.type );
+				return true;
 			}
-			
-		};
-		return subtype( t1, new LMap(null), t2, new LMap(null)  );
-	}
+			case types.SumType:{
+				var i1s = t1.tags();
+				var i2s = t2.tags();
+				for( var i in i1s ){
+					var j = t2.inner(i1s[i]);
+					if( j === undefined || // if tag is missing, or
+						!subtypeOf( t1.inner(i1s[i]), j ) )
+						return false;
+				}
+				return true;
+			}
+			case types.CapabilityType:
+				return subtypeOf( t1.location(), t2.location() ) &&
+					subtypeOf( t1.value(), t2.value() );
+				
+			case types.ForallType:		
+			case types.ExistsType:{
+				
+				if( t1.id().type !== t2.id().type )
+					return false;
+				
+				// if needs renaming
+				if( t1.id().name() !== t2.id().name() ){
+					var tmp = substitutionVarsOnly( t2.inner(), t2.id(), t1.id() );
+					return subtypeOf( t1.inner(), tmp );
+				}
+
+				return subtypeOf( t1.inner(), t2.inner() );
+			}
+
+			case types.TypeVariable:
+			case types.LocationVariable: {
+					return t1.name() === t2.name();
+			}
+
+			case types.DefinitionType:{
+				if( t1.definition() !== t2.definition() )
+					return false;
+				
+				var t1s = t1.args();
+				var t2s = t2.args();
+				if( t1s.length !== t2s.length )
+					return false;
+				for( var i=0;i<t1s.length;++i )
+					if( !subtypeOf( t1s[i], t2s[i] ) )
+						return false;
+				return true;
+			}
+			default:
+				error( "@subtype: Not expecting " +t1.type );
+		}
+
+	};
 	
 	//
 	// TYPING ENVIRONMENT

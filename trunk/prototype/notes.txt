@@ -15,7 +15,6 @@ NOTE:
 
 ========================================
 
-A shallow rename of variable would work well.
 
 REMOVE explicit rec
 CHANGE delayed app to a single typeapp with all arguments
@@ -23,10 +22,7 @@ Number[A,B] <: A+B
 
 
 error messages: ['the type:', type, 'was not needed']
-to enable HTML prints.
-
-USE THIS GRAMMAR:
-typedef N<t,T,A> = N[l,int,int]
+to enable HTML prints of error messages.
 
 FIXME: same improvement to other type checker functions?
 Like equals and whatnot?
