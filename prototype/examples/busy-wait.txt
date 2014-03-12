@@ -5,14 +5,12 @@
 import add
 
 // useful states
-typedef H = forall t.( rw t (Held#[]) )
-typedef F = forall t.( rw t (Free#int) )
+typedef H<t> = rw t (Held#[])
+typedef F<t> = rw t (Free#int)
 
 // sharing protocols
-typedef Retry = forall p.rec X.( ( (H[p]) => (H[p]) ; X )
-	(+) ( (F[p]) => none ) )
-
-typedef OneUse = forall p.( (H[p]) => (F[p]) )
+typedef Retry<p> = ( (H[p]) => (H[p]) ; (Retry[p]) ) (+) ( (F[p]) => none )
+typedef OneUse<p> = (H[p]) => (F[p])
 
 // program code
 open <u,meh> = new {} in

@@ -8,6 +8,23 @@ typedef NilP = forall q.( rec X.( (Nil[q]) => (Nil[q]); X ) )
 typedef ReadyP = rec Y.(forall q.( NilP[q] (+) (rec X.( (Ready[Y][q]) => (Ready[Y][q]) ; X ))))
 typedef RawP = rec Y.(forall q.( NilP[q] (+) ReadyP[q] (+) ( (Raw[q]) => (Ready[Y][q]) ; (ReadyP[q]) ) ))
 
+/*
+
+typedef Nil   <q> = rw q (Nil#[])
+typedef Raw   <q> = rw q (Raw#(exists l.exists r.( [ref l,ref r] :: ( (RawP[l]) * (RawP[r]) ) )))
+typedef Ready <q> = rw q (Ready#(exists l.exists r.( [int,ref l,ref r] :: ( (ReadyP[l]) * (ReadyP[r]) ) )))
+
+typedef NilP   <q> = (Nil[q]) => (Nil[q]); (NilP[q])
+typedef ReadyS <q> = Ready[q] => Ready[q] ; ReadyS[q]
+typedef ReadyP <q> = NilP[q] (+) ReadyS[q]
+typedef RawS   <q> = Raw[q] => Ready[q] ; ReadyS[q]
+typedef RawP   <q> = NilP[q] (+) ReadyP[q] (+) RawS[q]
+
+open alternative t in
+end
+ */
+
+
 // monotonic node initialization
 <q>fun( v : int , n : ( ref q :: (RawP[q]) ) ).
 	@q

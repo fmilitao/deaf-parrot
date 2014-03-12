@@ -5,12 +5,11 @@
 typedef Empty = E#(exists p.( ref p :: rw p [] )) 
 
 // a node is 'generic' in T.
-typedef Node = forall T.rec Node.(  
+typedef Node<T> = 
 	// List Node
-	N#(exists p.( ref p :: rw p [T,Node] ) )
+	N#( exists p.( ref p :: rw p [T,Node[T]] ) ) +
 	// Empty Node 
-	+ E#(exists p.( ref p :: rw p [] ) )
- )
+	E#( exists p.( ref p :: rw p [] ) )
 
 
 let ListADT = <T> 

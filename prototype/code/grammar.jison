@@ -1,4 +1,4 @@
-// Copyright (C) 2013 Filipe Militao <filipe.militao@cs.cmu.edu>
+// Copyright (C) 2013-2014 Filipe Militao <filipe.militao@cs.cmu.edu>
 // GPL v3 Licensed http://www.gnu.org/licenses/
 
 /* lexical grammar */
@@ -32,6 +32,7 @@
 "none"                return 'NONE'
 "@"                   return '@'
 "(+)"                 return '(+)'
+"&"                   return '&'
 "||"                  return '||'
 "|"                   return '|'
 "#"                   return '#'
@@ -81,8 +82,8 @@ type_root :
 		{ $$ = AST.makeForallType($2,$4,@$); }
 	| EXISTS IDENTIFIER '.' type_root
 		{ $$ = AST.makeExistsType($2,$4,@$); }
-	| REC IDENTIFIER '.' type_root
-		{ $$ = AST.makeRecursiveType($2,$4,@$); }
+//	| REC IDENTIFIER '.' type_root // FIXME: remove this -------------------!!!
+//		{ $$ = AST.makeRecursiveType($2,$4,@$); }
 	| alternative_type // groups all alternatives, easier commutative ops.
 		{ $$ = AST.makeAlternativeType($1,@$); }
 	;
@@ -91,8 +92,8 @@ type_fun :
 	  type_rg
 	| type_fun '-o' type_rg
 		{ $$ = AST.makeFunType($1,$3,@$); }
-	| type_fun '[' type_root ']'
-		{ $$ = AST.makeDelayableTypeApp($1,$3,@$); }
+	| IDENTIFIER '[' type_list ']'
+		{ $$ = AST.makeDefinitionType($1,$3,@$); }
 	;
 
 type_rg :
@@ -220,8 +221,15 @@ typedefs :
 	;
 
 typedef :
-	TYPEDEF IDENTIFIER "=" type_root
-		{ $$ = AST.makeTypedef($2,$4,@$); }
+	  TYPEDEF IDENTIFIER "=" type_root
+		{ $$ = AST.makeTypedef($2,$4,null,@$); }
+	| TYPEDEF IDENTIFIER typedef_pars "=" type_root
+		{ $$ = AST.makeTypedef($2,$5,$3,@$); }
+	;
+
+typedef_pars :
+	'<' ids_list '>'
+		{ $$ = $2; }
 	;
 	
 sequence :

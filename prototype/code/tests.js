@@ -178,8 +178,8 @@ module('Typechecker.Components');
 			var t_rec2 = new t.RecordType();
 			t_rec2.add('a',t_int); //[a : int]
 
-			equal( equals( t_rec2, t_rec1 ), false ); // [a : int] <: [a: int, b:int] 
-			equal( equals( t_rec1, t_rec2 ), true ); // [a: int, b:int] <: [a : int]
+			equal( equals( t_rec2, t_rec1 ), false ); // [a : int] == [a: int, b:int] 
+			equal( equals( t_rec1, t_rec2 ), false ); // [a: int, b:int] == [a : int]
 			
 			t_rec2.add('b',t_int);
 			equal( equals( t_rec2, t_rec1 ), true );

@@ -228,6 +228,12 @@ a:visited {
 	color: green;
 }
 
+.type_definition{
+	/* font-weight: bold; */
+	text-decoration:underline;
+	font-style: italic,underline;
+}
+
 .type_tag{
 	color: #FF6633;
 	font-weight: bold;
