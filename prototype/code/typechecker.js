@@ -707,165 +707,152 @@ var TypeChecker = (function(AST,assertF){
 	 * @param {Type} b
 	 * @return {Boolean} if the types are equal up to renaming.
 	 */
-	var equals = function(a,b){
+	var equals = function(t1,t2){
 
-		// Following table is used to store the relation between variables,
-		// instead of renaming. Thus, if the pair (X,Y) is in the table, it
-		// assumes that they are the same.
-//XXX: this won't work if there are collisions forall x.(exists x.x)...
-		var table = new Table();
-		
-		var equalsTo = function( t1, t2 ){
-			
-			// exactly the same
-			if( t1 === t2 )
-				return true;
+		// exactly the same
+		if( t1 === t2 )
+			return true;
 				
-			if( table.seen( t1, t2 ) )
-				return true;
-			
-			// Only tries to unfold definition if it appears that it will help. 
+		// Only tries to unfold definition if it appears that it will help. 
 //XXX: this is a very shallow lookup. won't work with more than 2 typedefs in sequence
-			var def1 = t1.type === types.DefinitionType;
-			var def2 = t2.type === types.DefinitionType;
-			if( def1 ^ def2 ){
-				if( def1 && typedefs[t1.definition()].type === t2.type ){
-					t1 = unfoldDefinition(t1);
-					return equalsTo( t1, t2 );
-				}
-				if( def2 && typedefs[t2.definition()].type === t1.type ){
-					t2 = unfoldDefinition(t2);
-					return equalsTo( t1, t2 );
-				}
+		var def1 = t1.type === types.DefinitionType;
+		var def2 = t2.type === types.DefinitionType;
+		if( def1 ^ def2 ){
+			if( def1 && typedefs[t1.definition()].type === t2.type ){
+				t1 = unfoldDefinition(t1);
+				return equals( t1, t2 );
 			}
-			
-			if( t1.type !== t2.type )
-				return false;
-			
-			// assuming both same type
-			switch ( t1.type ){
-				case types.ForallType:		
-				case types.ExistsType: {
-					if( t1.id().type !== t2.id().type )
-						return false;
-
-					// assume the labels are equal, if nothing else fails this is
-					// true due to equality up to renaming of bounded variables
-					table.push( t1.id().name(), t2.id().name() );
-					
-					return equalsTo( t1.inner(), t2.inner() );
-				}
-				case types.TypeVariable:
-				case types.LocationVariable: {
-					// note: same name for case of variables that are in scope
-					// but not declared in the type (i.e. already opened)
-					return  t1.name() === t2.name() ||
-						table.seen( t1.name(), t2.name() );
-				}
-				case types.FunctionType:
-					return equalsTo( t1.argument(), t2.argument() ) &&
-						equalsTo( t1.body(), t2.body() );
-				case types.BangType:
-					return equalsTo( t1.inner(), t2.inner() );
-				case types.RelyType: {
-					return equalsTo( t1.rely(), t2.rely() ) &&
-						equalsTo( t1.guarantee(), t2.guarantee() );
-				}
-				case types.GuaranteeType: {
-					return equalsTo( t1.guarantee(), t2.guarantee() ) &&
-						equalsTo( t1.rely(), t2.rely() );
-				}
-				case types.SumType: {
-					var t1s = t1.tags();
-					var t2s = t2.tags();
-					// note that it is an array of tags (strings)
-					if( t1s.length !== t2s.length )
-						return false;
-					for( var i=0; i<t1s.length; ++i ){
-						if( t2s.indexOf(t1s[i])===-1 ||
-							!equalsTo( t1.inner(t1s[i]), t2.inner(t1s[i]) ) )
-							return false;
-					}
-					return true;
-				}
-				case types.ReferenceType:
-					return equalsTo( t1.location(), t2.location() );
-				case types.StackedType:
-					return equalsTo( t1.left(), t2.left() ) &&
-						equalsTo( t1.right(), t2.right() );
-				case types.CapabilityType:
-					return equalsTo( t1.location(), t2.location() ) &&
-						equalsTo( t1.value(), t2.value() );
-				case types.RecordType: {
-					var t1s = t1.getFields();
-					var t2s = t2.getFields();
-					if( Object.keys(t1s).length !== Object.keys(t2s).length )
-						return false;
-					for( var i in t2s )
-						if( !t1s.hasOwnProperty(i) || 
-							!equalsTo( t1s[i], t2s[i] ) )
-							return false;
-					return true;
-				} 
-				case types.TupleType: {
-					var t1s = t1.getValues();
-					var t2s = t2.getValues();
-					if( t1s.length !== t2s.length )
-						return false;
-					for( var i=0;i<t1s.length;++i )
-						if( !equalsTo( t1s[i], t2s[i] ) )
-							return false;
-					return true;
-				}
-				case types.PrimitiveType:
-					return t1.name() === t2.name();
-				case types.AlternativeType:
-				case types.StarType:{
-					var i1s = t1.inner();
-					var i2s = t2.inner();
-					
-					if( i1s.length !== i2s.length )
-						return false;
-					// any order should do
-					var tmp_i2s = i2s.slice(0); // copies array
-					for(var i=0;i<i1s.length;++i){
-						var curr = i1s[i];
-						var found = false;
-						// tries to find matching element
-						for(var j=0;j<tmp_i2s.length;++j){
-							var tmp = tmp_i2s[j];
-							if( equalsTo(curr,tmp) ){
-								tmp_i2s.splice(j,1); // removes element
-								found = true;
-								break; // continue to next
-							}
-						}
-						// if not found, then must be different
-						if( !found ){
-							return false;
-						}
-					}
-					return true;
-				}
-				case types.DefinitionType:{
-					if( t1.definition() !== t2.definition() )
-						return false;
-					
-					var t1s = t1.args();
-					var t2s = t2.args();
-					if( t1s.length !== t2s.length )
-						return false;
-					for( var i=0;i<t1s.length;++i )
-						if( !equalsTo( t1s[i], t2s[i] ) )
-							return false;
-					return true;
-				}
-				default:
-					error( "Not expecting " +t2.type );
-				}
+			if( def2 && typedefs[t2.definition()].type === t1.type ){
+				t2 = unfoldDefinition(t2);
+				return equals( t1, t2 );
+			}
 		}
-
-		return equalsTo( a, b );
+		
+		if( t1.type !== t2.type )
+			return false;
+			
+		// assuming both same type
+		switch ( t1.type ){
+			case types.ForallType:		
+			case types.ExistsType: {
+				if( t1.id().type !== t2.id().type )
+					return false;
+					
+				// if name mismatch, do "quick" substitution to make them match
+				if( t1.id().name() !== t2.id().name() ){
+					var tmp = substitutionVarsOnly(t2.inner(),t2.id(),t1.id());
+					return equals( t1.inner(), tmp );
+				}
+		
+				return equals( t1.inner(), t2.inner() );
+			}
+			case types.TypeVariable:
+			case types.LocationVariable: {
+				// note: same name for case of variables that are in scope
+				// but not declared in the type (i.e. already opened)
+				return  t1.name() === t2.name();
+			}
+			case types.FunctionType:
+				return equals( t1.argument(), t2.argument() ) &&
+					equals( t1.body(), t2.body() );
+			case types.BangType:
+				return equals( t1.inner(), t2.inner() );
+			case types.RelyType: {
+				return equals( t1.rely(), t2.rely() ) &&
+					equals( t1.guarantee(), t2.guarantee() );
+			}
+			case types.GuaranteeType: {
+				return equals( t1.guarantee(), t2.guarantee() ) &&
+					equals( t1.rely(), t2.rely() );
+			}
+			case types.SumType: {
+				var t1s = t1.tags();
+				var t2s = t2.tags();
+				// note that it is an array of tags (strings)
+				if( t1s.length !== t2s.length )
+					return false;
+				for( var i=0; i<t1s.length; ++i ){
+					if( t2s.indexOf(t1s[i])===-1 ||
+						!equals( t1.inner(t1s[i]), t2.inner(t1s[i]) ) )
+						return false;
+				}
+				return true;
+			}
+			case types.ReferenceType:
+				return equals( t1.location(), t2.location() );
+			case types.StackedType:
+				return equals( t1.left(), t2.left() ) &&
+					equals( t1.right(), t2.right() );
+			case types.CapabilityType:
+				return equals( t1.location(), t2.location() ) &&
+					equals( t1.value(), t2.value() );
+			case types.RecordType: {
+				var t1s = t1.getFields();
+				var t2s = t2.getFields();
+				if( Object.keys(t1s).length !== Object.keys(t2s).length )
+					return false;
+				for( var i in t2s )
+					if( !t1s.hasOwnProperty(i) || 
+						!equals( t1s[i], t2s[i] ) )
+						return false;
+				return true;
+			} 
+			case types.TupleType: {
+				var t1s = t1.getValues();
+				var t2s = t2.getValues();
+				if( t1s.length !== t2s.length )
+					return false;
+				for( var i=0;i<t1s.length;++i )
+					if( !equals( t1s[i], t2s[i] ) )
+						return false;
+				return true;
+			}
+			case types.PrimitiveType:
+				return t1.name() === t2.name();
+			case types.AlternativeType:
+			case types.StarType:{
+				var i1s = t1.inner();
+				var i2s = t2.inner();
+				
+				if( i1s.length !== i2s.length )
+					return false;
+				// any order should do
+				var tmp_i2s = i2s.slice(0); // copies array
+				for(var i=0;i<i1s.length;++i){
+					var curr = i1s[i];
+					var found = false;
+					// tries to find matching element
+					for(var j=0;j<tmp_i2s.length;++j){
+						var tmp = tmp_i2s[j];
+						if( equals(curr,tmp) ){
+							tmp_i2s.splice(j,1); // removes element
+							found = true;
+							break; // continue to next
+						}
+					}
+					// if not found, then must be different
+					if( !found ){
+						return false;
+					}
+				}
+				return true;
+			}
+			case types.DefinitionType:{
+				if( t1.definition() !== t2.definition() )
+					return false;
+				
+				var t1s = t1.args();
+				var t2s = t2.args();
+				if( t1s.length !== t2s.length )
+					return false;
+				for( var i=0;i<t1s.length;++i )
+					if( !equals( t1s[i], t2s[i] ) )
+						return false;
+				return true;
+			}
+			default:
+				error( "@equals: Not expecting " +t2.type );
+			}
 	};
 	
 	/**
