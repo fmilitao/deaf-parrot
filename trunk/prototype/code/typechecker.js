@@ -648,16 +648,24 @@ var TypeChecker = (function(AST,assertF){
 				
 		// Only tries to unfold definition if it appears that it will help. 
 //XXX: this is a very shallow lookup. won't work with more than 2 typedefs in sequence
+//XXX: why won't this work with unAll? (another debugging session needed...)
 		var def1 = t1.type === types.DefinitionType;
 		var def2 = t2.type === types.DefinitionType;
 		if( def1 ^ def2 ){
+//debugger
 			if( def1 && typedefs[t1.definition()].type === t2.type ){
 				t1 = unfoldDefinition(t1);
-				return equals( t1, t2 );
+				// if unfolding worked
+				if( t1.type !== types.DefinitionType ){
+					return equals( t1, t2 );
+				}
 			}
 			if( def2 && typedefs[t2.definition()].type === t1.type ){
 				t2 = unfoldDefinition(t2);
-				return equals( t1, t2 );
+				// if unfolding worked
+				if( t2.type !== types.DefinitionType ){
+					return equals( t1, t2 );
+				}
 			}
 		}
 		
@@ -798,7 +806,27 @@ var TypeChecker = (function(AST,assertF){
 	
 		if( t1 === t2 || equals(t1,t2) ) // A <: A
 			return true;
-				
+		
+		// if mismatch on DefinitionType
+		var def1 = t1.type === types.DefinitionType;
+		var def2 = t2.type === types.DefinitionType;
+		if( def1 ^ def2 ){
+			if( def1 ){
+				t1 = unAll(t1,false,true);
+				// if unfolding worked
+				if( t1.type !== types.DefinitionType ){
+					return subtypeOf( t1, t2 );
+				}
+			}
+			if( def2 ){
+				t2 = unAll(t2,false,true);
+				// if unfolding worked
+				if( t2.type !== types.DefinitionType ){
+					return subtypeOf( t1, t2 );
+				}
+			}
+		}
+
 		// "pure to linear" - ( t1: !A ) <: ( t2: A )
 		if ( t1.type === types.BangType && t2.type !== types.BangType )
 			return subtypeOf( t1.inner(), t2 );
@@ -814,22 +842,6 @@ var TypeChecker = (function(AST,assertF){
 		if ( t1.type === types.ReferenceType && t2.type === types.BangType )
 			return subtypeOf( t1, t2.inner() );
 			
-		// about to fail because they are of different type kind
-		// attempt to unfold type definitions!
-		// Only tries to unfold definition if it appears that it will help. 
-//XXX: this is a very shallow lookup. won't work with more than 2 typedefs in sequence
-		var def1 = t1.type === types.DefinitionType;
-		var def2 = t2.type === types.DefinitionType;
-		if( def1 ^ def2 ){
-			if( def1 && typedefs[t1.definition()].type === t2.type ){
-				t1 = unfoldDefinition(t1);
-				return subtypeOf( t1, t2 );
-			}
-			if( def2 && typedefs[t2.definition()].type === t1.type ){
-				t2 = unfoldDefinition(t2);
-				return subtypeOf( t1, t2 );
-			}
-		}
 		
 		// all remaining rule require equal kind of type
 		if( t1.type !== t2.type ){
@@ -1532,14 +1544,13 @@ var TypeChecker = (function(AST,assertF){
 		
 	// attempts to convert type to bang, if A <: !A
 	var purify = function(t){
-//FIXME may need to unfold definition?
-		t = unAll(t,false,true);	// FIXME tmp	
+		t = unAll(t,false,true);	
 		if( t.type !== types.BangType ){
 			var tmp = new BangType(t);
 			if( subtypeOf(t,tmp) )
 				return tmp;
 		}
-		return t;
+		return t;		
 	}
 	
 	/**
@@ -1566,7 +1577,6 @@ var TypeChecker = (function(AST,assertF){
 		if( d.type !== types.DefinitionType )
 			return d;
 		
-//		debugger
 		var t = typedefs[d.definition()];
 		var args = d.args();
 		var pars = typedefs_args[d.definition()];
@@ -2300,10 +2310,14 @@ var checkProtocolConformance = function( s, a, b, ast ){
 					(loc+" is not a capability, "+cap.type), ast );
 				
 				var old = cap.value();
-//FIXME unfold definition?
+
 				var residual;
+				
 				// see if read must be destructive (i.e. leave unit)
-				if( old.type === types.BangType )
+				if( old.type === types.BangType ||
+				// we only see if the old can be purified, but do not change it
+				// to the potentiallu unfolded type definition.
+					 purify(old).type === types.BangType )
 					residual = old;
 				else {
 					residual = new BangType(new RecordType());
@@ -2449,7 +2463,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				assert( exp.type === types.ForallType || 
 					('Not a Forall '+exp.toString()), ast.exp );
 				
-				// FIXME: not checked that it's the correct kind!
+				// FIXME: not checking that it's the correct kind!
 				var packed = check(ast.id, env);
 				return substitution( exp.inner(), exp.id(), packed );
 			};
@@ -2674,8 +2688,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 					('Unknow Location Variable '+id), ast);
 
 				var type = check( ast.type, env );
-// FIXME do a shallow purify (no unfold of definitions)
-type = purify( type );
+				type = purify( type );
 				return new CapabilityType( loc, type );
 			};
 			
@@ -2934,7 +2947,11 @@ type = purify( type );
 					}
 					typedefs_args[ast.typedefs[i].id] = args;
 				}
-				//debugger
+				
+				// must avoid attempting to unfold what is not yet definied.
+				var tmp_unfold = unfoldDefinition;
+				unfoldDefinition = function(t){ return t; };
+
 				for(var i=0;i<ast.typedefs.length;++i){
 					var type = ast.typedefs[i];
 					assert( !typedefs.hasOwnProperty(type.id) ||
@@ -2954,6 +2971,9 @@ type = purify( type );
 					// map of type names to typechecker types.
 					typedefs[type.id] = check( type.type, tmp_env );
 				}
+				
+				// ok to allow unfoldings
+				unfoldDefinition = tmp_unfold;
 				
 			}
 			return check( ast.exp, env );

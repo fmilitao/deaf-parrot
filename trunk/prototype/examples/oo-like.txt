@@ -2,11 +2,9 @@
 import concat
 
 // Methods, stored in a capability for 'this'
-typedef R<t> = [ name : [] :: (M[t]) -o string :: (M[t]),
+typedef R<t> = ![ name : [] :: (M[t]) -o string :: (M[t]),
                   toString : [] :: (M[t]) -o string :: (M[t]) ]
-typedef M<t> = rw t !(R[t])
-
-// FIXME: bang must be on M to ensure there is no linear read. THIS IS BAD.
+typedef M<t> = rw t (R[t])
 
 let classAnimal = <t>fun( this : ref t ).
 	{
