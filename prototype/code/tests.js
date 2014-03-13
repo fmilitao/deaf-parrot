@@ -112,46 +112,6 @@ var parseCode = function(file,data) {
 
 //QUnit.config.reorder = false;
 
-module('Fetch Files');
-
-	test( "Fetches", function() {
-		for( var i in examples ){
-			var f = fetchCode(examples_dir+examples[i]);
-		  	ok( f !== null && f !== undefined , "'"+examples[i]+"' fetched.");
-		}
-	});
-
-module('Parser');
-
-	test( "Parses", function() {
-		for( var i in examples ){
-			var test = fetchCode( examples_dir+examples[i] );
-			var ast = parseCode( examples[i], test.data ); //parser(test.data);
-		  	ok( ast !== null , "'"+examples[i]+"' parsed.");
-		}
-	});
-
-module('Interpreter');
-
-	test( "Runs", function() {
-		for( var i in examples ){
-			var test = fetchCode(examples_dir+examples[i]);
-			var ast = parseCode( examples[i], test.data ); //parser(test.data);
-			if( ast === null ){
-				// forced failure due to paserser failur
-		  		ok( false , "'"+examples[i]+"' parser failure.");
-		  		continue;
-		  	}
-		  	try{
-		  		equal( interpreter( ast ).toString(),
-					test.i_ok, "'"+examples[i]+"' result check." );
-		  	}catch(e){
-		  		equal( e.message,
-					test.i_fail, "'"+examples[i]+"' error check." );
-		  	}
-		}
-	});
-	
 module('Typechecker.Components');
 	
 	test( "Equals", function() {
@@ -555,12 +515,53 @@ module('Typechecker.Components');
 			t_alt1.add(new t.TypeVariable('Z'));
 
 			equal( subtype(t_alt2,t_alt1), false);
-			// FIXME bugs due to missing X <: X  (+) Y subtype rule:
-			//equal( subtype(t_alt1,t_alt2), true);
-			//equal( subtype(new t.TypeVariable('X'), t_alt1), true ); 
+			equal( subtype(t_alt1,t_alt2), true);
+			// XXX missing X <: X  (+) Y subtype rule:
+			// test of the base case, (not between alternatives)
+			equal( subtype(new t.TypeVariable('X'), t_alt1), true ); 
 
 // TODO renaming, cycles, type definitions.
 		} );
+	});
+	
+module('Fetch Files');
+
+	test( "Fetches", function() {
+		for( var i in examples ){
+			var f = fetchCode(examples_dir+examples[i]);
+		  	ok( f !== null && f !== undefined , "'"+examples[i]+"' fetched.");
+		}
+	});
+
+module('Parser');
+
+	test( "Parses", function() {
+		for( var i in examples ){
+			var test = fetchCode( examples_dir+examples[i] );
+			var ast = parseCode( examples[i], test.data ); //parser(test.data);
+		  	ok( ast !== null , "'"+examples[i]+"' parsed.");
+		}
+	});
+
+module('Interpreter');
+
+	test( "Runs", function() {
+		for( var i in examples ){
+			var test = fetchCode(examples_dir+examples[i]);
+			var ast = parseCode( examples[i], test.data ); //parser(test.data);
+			if( ast === null ){
+				// forced failure due to paserser failur
+		  		ok( false , "'"+examples[i]+"' parser failure.");
+		  		continue;
+		  	}
+		  	try{
+		  		equal( interpreter( ast ).toString(),
+					test.i_ok, "'"+examples[i]+"' result check." );
+		  	}catch(e){
+		  		equal( e.message,
+					test.i_fail, "'"+examples[i]+"' error check." );
+		  	}
+		}
 	});
 
 module('Typechecker');
@@ -583,22 +584,6 @@ module('Typechecker');
 		  	}
 		}
 	});
-	
-/*
-test( "hello test", function() {
-  ok( 1 == "1", "Passed!" );
-  equal( 1, 1, 'one equals one');
-  //deepEqual( {a:"asd"}, {a:"Asd"});  
-});
-
-test( "subtyping", function() {
-  ok( 1 == "1", "Passed!" );
-  equal( 1, 1, 'one equals one');
-  //deepEqual( {a:"asd"}, {a:"Asd"});  
-});
-
-//ok( true , "OK!\nAST:\n"+JSON.stringify(ast,undefined,2) );
-*/
 
 
 

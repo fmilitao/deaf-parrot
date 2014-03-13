@@ -3,7 +3,7 @@ sharing.txt
 busy-wait.txt
 simple-counter.txt
 pipe.txt
-TODO:shared-stack.txt
+shared-stack.txt
 TODO:monotonic-tree.txt
 TODO:spaghetti-stack.txt
 TODO:iterative-sharing.txt

@@ -15,12 +15,6 @@ NOTE:
 
 ========================================
 
-
-REMOVE explicit rec
-CHANGE delayed app to a single typeapp with all arguments
-Number[A,B] <: A+B
-
-
 error messages: ['the type:', type, 'was not needed']
 to enable HTML prints of error messages.
 

@@ -841,7 +841,17 @@ var TypeChecker = (function(AST,assertF){
 		// "ref" t1: (ref p) <: !(ref p)
 		if ( t1.type === types.ReferenceType && t2.type === types.BangType )
 			return subtypeOf( t1, t2.inner() );
-			
+		
+		if( t1.type !== types.AlternativeType && t2.type === types.AlternativeType ){
+			// only requirement is that t1 is one of t2's alternative
+			var i2s = t2.inner();
+			for(var j=0;j<i2s.length;++j) {
+				if( subtypeOf(t1,i2s[j]) ){
+					return true;
+				}
+			}
+			return false;
+		}
 		
 		// all remaining rule require equal kind of type
 		if( t1.type !== t2.type ){
@@ -900,7 +910,32 @@ var TypeChecker = (function(AST,assertF){
 			case types.StackedType:
 				return subtypeOf( t1.left(), t2.left() ) &&
 					subtypeOf( t1.right(), t2.right() );
-			case types.AlternativeType:
+			case types.AlternativeType:{
+				var i1s = t1.inner();
+				var i2s = t2.inner();
+				
+				// more alternatives in t1
+				if( i1s.length > i2s.length )
+					return false;
+					
+				// any order will do, but must ensure all of t1 is inside t2
+				var tmp_i2s = i2s.slice(0); // copies array
+				for(var i=0;i<i1s.length;++i){
+					var curr = i1s[i];
+					var found = false;
+					for(var j=0;j<tmp_i2s.length;++j){
+						var tmp = tmp_i2s[j];
+						if( subtypeOf(curr,tmp) ){
+							tmp_i2s.splice(j,1); // removes element
+							found = true;
+							break; // continue to next
+						}
+					}
+					if( !found )
+						return false;
+				}
+				return true;
+			}
 			case types.StarType:{
 				var i1s = t1.inner();
 				var i2s = t2.inner();
