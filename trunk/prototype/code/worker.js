@@ -529,8 +529,6 @@ var toHTML = function (t){
 			return '<b>'+t.name()+'</b>';
 		case types.NoneType:
 			return '<b>none</b>';
-		//case types.DelayedApp:
-		//	return wq( wq( _toHTML(t.inner()) )+wQ('[')+ wq( toHTML(t.id()) )+wQ(']') );
 		
 		case types.DefinitionType:{
 			var t_def = '<span class="type_definition">'+t.definition()+'</span>';

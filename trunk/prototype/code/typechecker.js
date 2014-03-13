@@ -1273,6 +1273,10 @@ var TypeChecker = (function(AST,assertF){
 		}
 		
 		this.setCap = function( c ){
+			// ok to add, but don't really do it...
+			if( c.type === types.NoneType )
+				return true;
+			
 			error( ( c.type !== types.LocationVariable && 
 				c.type !== types.GuaranteeType ) || 'Error @setCap' );
 
@@ -1318,6 +1322,8 @@ var TypeChecker = (function(AST,assertF){
 				var tmp = unfoldDefinition(cap);
 				return capContains(name,tmp); 
 			}
+			case types.NoneType: // FIXME: does this make sense?
+				return true;
 			default:
 				// another types disallowed, for now
 				error( 'Error @capContains: '+cap.type );
@@ -1885,7 +1891,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 	var visited = [];
 	var max_visited = 100; // safeguard against 'equals' bugs...
 	
-	// checks if state was already visited
+	// checks if configuration was already visited
 	var contains = function(s,a,b){
 		for( var i=0; i<visited.length; ++i ){
 			var tmp = visited[i];
@@ -1928,7 +1934,6 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			var alts = p.inner();
 			for( var i=0; i<alts.length; ++i ){
 				try{
-//console.debug('attempt:: '+alts[i] +' s::'+s);
 					return sim(s,alts[i]);
 				}catch(e){
 					// assume it is an assertion error, continue to try with
@@ -1957,7 +1962,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 	}
 	
 	var work = [];
-	work.push( [s,a,b] );
+	work.push( [s,a,b] ); // initial configuration
 
 	while( work.length > 0 ){
 		var state = work.pop();
@@ -1968,7 +1973,6 @@ var checkProtocolConformance = function( s, a, b, ast ){
 		// already done
 		if( contains(_s,_a,_b) )
 			continue;
-//console.debug( 's:: '+_s+' p:: '+_a+' q:: '+_b);
 
 		visited.push( [_s,_a,_b] );
 		
@@ -1982,6 +1986,22 @@ var checkProtocolConformance = function( s, a, b, ast ){
 		// more for debug than requirement of the algorhtm.
 		assert( max_visited-- > 0 || 'ERROR: MAX VISITED', ast);
 	}
+	
+/*	
+ //XXX how to attach this to info? such that iff SHARE, then there should be
+// protocol conformance information.
+ 
+	var printConfiguration = function(conf){
+		return conf[0].toString()+' <<>> '+conf[1].toString()+' || '+conf[2].toString();
+	}
+	
+console.debug( 'Configurations: '+(100-max_visited));
+for(var i=0;i<visited.length;++i){
+	console.debug( i+': '+printConfiguration(visited[i]) );
+}	
+*/
+
+
 };
 
 	// this wrapper function allows us to inspect the type and envs
