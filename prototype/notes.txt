@@ -1,39 +1,30 @@
-PROTOTYPE:
 
-1. Examples should use initial empty line to not show typing info.
-2. Rethink interface.
-3. How to show multiple levels of same capability?
+PROBLEM:
+	recursive functions that are recursive with foralls, such that:
 
-remember to disable Chrome's cache!
+fun Init<q><T>( x : A , q : B ) : C
 
-========================================
+should have type:
+	forall q.forall T.( A -o B -o C )
 
-NOTE:
-	- for now limited to only unfolding one type definition, at most
-	- same for unbags.
->> this should be fixed, but not in critical path.
 
-========================================
+TODO:
+	>> error messages: ['the type:', type, 'was not needed']
+	to enable HTML prints of error messages.
 
-error messages: ['the type:', type, 'was not needed']
-to enable HTML prints of error messages.
-
-FIXME: same improvement to other type checker functions?
-Like equals and whatnot?
-
-// setup visitors to avoid big switch at runtime
-for( var i in AST.kinds ){
-	visitor[i] = getVisit();
-}
-
-var run = function(ast,env){
-	if( !visitor.hasOwnProperty( ast.kind ) )
-		throw error;
+TODO:
+	>> use visitors instead of big 'case'!
+	// setup visitors to avoid big switch at runtime
+	for( var i in AST.kinds ){
+		visitor[i] = getVisit();
+	}
 	
-	return (visitor[ast.kind])(ast,env);
-}
-
--- avoid closures by defining function with argument?
+	var run = function(ast,env){
+		if( !visitor.hasOwnProperty( ast.kind ) )
+			throw error;
+		
+		return (visitor[ast.kind])(ast,env);
+	}
 
 ========================================
 
@@ -100,6 +91,14 @@ PENDING FIXES:
 	open < a, < b, < c , < d , x > > > > = x in ... end
 	
 ===============================================================================
+
+PROTOTYPE:
+
+1. Examples should use initial empty line to not show typing info.
+2. Rethink interface.
+3. How to show multiple levels of same capability?
+
+>>> remember to disable Chrome's cache!
 
 REMEMBER:
  	- to disable chrome's cache

@@ -1633,6 +1633,7 @@ var TypeChecker = (function(AST,assertF){
 		case types.RelyType:
 		case types.CapabilityType:
 		case types.TypeVariable:
+		case types.DefinitionType:
 		// FIXME: is duplication check stil needed??
 			assert( d.setCap( t ) || ('Duplicated capability for '+ t), ast );
 			break;
@@ -2065,7 +2066,7 @@ for(var i=0;i<visited.length;++i){
 
 				var e = env.newScope();
 				for( var i=0; i<ast.ids.length ; ++i ){
-					assert( e.set( ast.ids[i], values[i] ) ||
+					assert( e.set( ast.ids[i], purify(values[i]) ) ||
 						("Identifier '" + ast.ids[i] + "' already in scope"), ast );
 				}
 				
@@ -2239,7 +2240,6 @@ for(var i=0;i<visited.length;++i){
 				var env_start = env.clone();
 				var end_env = null;
 				var result = null;
-				
 				for( var i=0; i<alts.length; ++i ){
 					var tmp_env = end_env === null ? env : env_start.clone();
 					var alternative = alts[i];

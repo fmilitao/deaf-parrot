@@ -1,18 +1,25 @@
-//FIXME: work in progress
+//FIXME: recursive functions need to be changed to allow forall on recursion.
 
+// states
 typedef Nil   <q> = rw q (Nil#[])
 typedef Raw   <q> = rw q (Raw#(exists l.exists r.( [ref l,ref r] :: ( (RawP[l]) * (RawP[r]) ) )))
 typedef Ready <q> = rw q (Ready#(exists l.exists r.( [int,ref l,ref r] :: ( (ReadyP[l]) * (ReadyP[r]) ) )))
 
-typedef NilP   <q> = (Nil[q]) => (Nil[q]); (NilP[q])
+// steps
 typedef ReadyS <q> = (Ready[q]) => (Ready[q]) ; (ReadyS[q])
-typedef ReadyP <q> = (NilP[q]) (+) (ReadyS[q])
 typedef RawS   <q> = (Raw[q]) => (Ready[q]) ; (ReadyS[q])
-typedef RawP   <q> = (NilP[q]) (+) (ReadyP[q]) (+) (RawS[q])
+typedef NilS   <q> = (Nil[q]) => (Nil[q]); (NilS[q])
+
+// protocols
+typedef ReadyP <q> = (NilS[q]) (+) (ReadyS[q])
+typedef RawP   <q> = (NilS[q]) (+) (ReadyS[q]) (+) (RawS[q])
 
 // monotonic node initialization
-<q>fun( v : int , n : ( ref q :: (RawP[q]) ) ).
-	@q ( //FIXME issue with nested (+)'s
+<q>fun FIX( v : int , n : ( ref q :: (RawP[q]) ),
+	// FIXME: this is temporary until Recursive Function format fixed!
+	Init : !(forall p.( int -o ( ref p :: (RawP[p] ) -o [] :: (ReadyP[p] ) ) )) )
+: [] :: (ReadyP[q]). // to check / ensure correct result
+	@q (
 	focus (Raw[q]), (Ready[q]), (Nil[q]);
 	case !n of
 		Nil#_ -> // empty node
@@ -25,10 +32,10 @@ typedef RawP   <q> = (NilP[q]) (+) (ReadyP[q]) (+) (RawS[q])
 		open <r,pair> = y in
 		let [left,right] = pair in
 			// initialize children:
-			init[l] v left;
-			init[r] v right;
+			Init[l] v left; //FIXME: bug when recursion should include Forall<q>!
+			Init[r] v right;
 			// done
-			n := Ready#<l,<r,{v,l,r}::( (ReadyP[l]) * (ReadyP[r]) )>>
+			n := Ready#<l,<r,{v,left,right}::( (ReadyP[l]) * (ReadyP[r]) )>>
 		end end end
 	end;
 	defocus )
