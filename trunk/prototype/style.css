@@ -139,7 +139,7 @@ select {
    font-size: 10pt;    
    color: black;
    opacity: 0.95;
-   
+   overflow:scroll;
 }
 
 .typing_tmp{
@@ -225,12 +225,25 @@ a:visited {
 
 
 /* Style for Output Console */
-.type_location{
+.type_location {
 	color: blue;
 }
 
-.type_fun{
+.type_fun {
 	/* font-size: 12pt; //TODO multimap symbol is messed up */
+}
+
+.typing_conformance tr:hover {
+	background-color:#d4f161;
+}
+.typing_conformance, tr, td {
+	border-collapse:collapse;
+	border:1px solid #f1a261;
+	padding: 3px;
+	text-align: center;
+}
+.typing_conformance th {
+	background-color:#f1c661;
 }
 
 .type_variable{

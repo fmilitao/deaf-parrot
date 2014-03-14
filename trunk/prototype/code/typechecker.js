@@ -1965,8 +1965,8 @@ var checkProtocolConformance = function( s, a, b, ast ){
 	assert( initial === undefined || 'Protocol-Protocol conformance is WIP', ast );
 	
 	
-	var visited = [];
-	var max_visited = 100; // safeguard against 'equals' bugs...
+	var visited = []; // visited configurations
+	var max_visited = 100; // safeguard against 'equals' bugs, bounds execution.
 	
 	// checks if configuration was already visited
 	var contains = function(s,a,b){
@@ -2077,9 +2077,11 @@ for(var i=0;i<visited.length;++i){
 	console.debug( i+': '+printConfiguration(visited[i]) );
 }	
 */
-
+	hack_info = visited; // XXX hack to expose 'visited'
 
 };
+
+	var hack_info;
 
 	// this wrapper function allows us to inspect the type and envs
 	// of some node, while leaving the checker mostly clean.
@@ -2088,6 +2090,9 @@ for(var i=0;i<visited.length;++i){
 		type_info.push( info );
 		var res = check_inner( ast, env );
 		info.res = res;
+		if( ast.kind === AST.kinds.SHARE ){
+			info.conformance = hack_info;
+		}
 		return res;
 	};
 

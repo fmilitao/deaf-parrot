@@ -269,7 +269,25 @@ var libTyper = function( file, ctx ){
 // Printing Type Information
 //
 
-var printEnvironment = function(env,ast,pos,r){
+var printAST = function(ast,r){
+	return "@"+(ast.line+1)+":"+ast.col+'-'
+		+(ast.last_line+1)+':'+ast.last_col+' '+ast.kind;
+		//+'\nType: '+toHTML(r) //FIXME too much to show?
+}
+
+var printConformance = function(cf){
+	var tmp = '<table class="typing_conformance"><tr><th>State</th><th>P</th><th>Q</th></tr>';
+	for(var i=0;i<cf.length;++i){
+		tmp+= '<tr>'+
+			'<td>'+ toHTML(cf[i][0]) +'</td>'+ 
+			'<td>'+ toHTML(cf[i][1]) +'</td>'+
+			'<td>'+ toHTML(cf[i][2]) +'</td>'+ 
+			'</tr>';
+	}
+	return tmp+'</table>';
+}
+
+var printEnvironment = function(env){
 	var res = _printEnvironment(env);
 	
 	var gamma = res.gamma;
@@ -281,13 +299,10 @@ var printEnvironment = function(env,ast,pos,r){
 	delta.sort(); // ...same order
 	delta = delta.join(',\n    ');
 	
-	return "@"+(ast.line+1)+":"+ast.col+'-'+(ast.last_line+1)+':'+ast.last_col+' '
-		+ast.kind //+'\nType: '+toHTML(r) //FIXME too much to show?
-		+"<hr class='type_hr'/>"
-		+"\u0393 = "+gamma+"\n"+"\u0394 = "+delta;
+	return "\u0393 = "+gamma+"\n"+"\u0394 = "+delta;
 }
 
-var _printEnvironment = function(env,ast,pos){
+var _printEnvironment = function(env){
 	var gamma = [];
 	var delta = [];
 	var visited = [];
@@ -402,22 +417,27 @@ var info = function(tp,pos){
 		return '';
 
 	var msg = '<b title="click to hide">Type Information</b> ('+diff+'ms)';
+	//msg += "<hr class='type_hr'/>";
 	
 	for(var i=0;i<indexes.length;++i){
 		var ptr = indexes[i];
 		// minor trick: only print if the same kind since alternatives
 		// are always over the same kind...
 		// IMPROVE: is there a better way to display this information?
-		if( type_info[ptr].ast.kind !==
+		/* if( type_info[ptr].ast.kind !==
 			type_info[indexes[0]].ast.kind )
-			continue;
-		msg += '<br/>'+printEnvironment(
-				type_info[ptr].env,
-				type_info[ptr].ast,
-				pos,
-				type_info[ptr].res
-			);
-		}
+			continue;*/
+		var as = printAST( type_info[ptr].ast, type_info[ptr].res );
+		var ev = printEnvironment( type_info[ptr].env );
+		var cf = type_info[ptr].conformance;
+		cf = (cf!==undefined?printConformance(cf):'');
+					
+		msg += "<hr class='type_hr'/>"
+			+ as 
+			+'<br/>'
+			+ ev
+			+ cf;
+	}
 		
 	return msg;
 }
