@@ -419,6 +419,8 @@ var info = function(tp,pos){
 	var msg = '<b title="click to hide">Type Information</b> ('+diff+'ms)';
 	//msg += "<hr class='type_hr'/>";
 	
+	var res = [];
+	
 	for(var i=0;i<indexes.length;++i){
 		var ptr = indexes[i];
 		// minor trick: only print if the same kind since alternatives
@@ -431,14 +433,35 @@ var info = function(tp,pos){
 		var ev = printEnvironment( type_info[ptr].env );
 		var cf = type_info[ptr].conformance;
 		cf = (cf!==undefined?printConformance(cf):'');
-					
-		msg += "<hr class='type_hr'/>"
-			+ as 
-			+'<br/>'
-			+ ev
-			+ cf;
-	}
+	
+		// group all those that have the same environment	
+		var seen = false;
+		for(var j=0;!seen && j<res.length;++j){
+			var jj = res[j];
+			if( jj.env === ev ){
+				// already seen
+				jj.ast += '<br/>'+as;
+				if( jj.cf === '' )
+					jj.cf = cf;
+				seen = true;
+				break;
+			}
+		}
 		
+		if( !seen ){
+			res.push( { ast : as, env : ev, cf : cf } );
+		}
+	}
+
+	for(var i=0;i<res.length;++i){
+		var tmp = res[i];
+		msg += "<hr class='type_hr'/>"
+			+ tmp.ast 
+			+'<br/>'
+			+ tmp.env
+			+ tmp.cf;		
+	}
+	
 	return msg;
 }
 
