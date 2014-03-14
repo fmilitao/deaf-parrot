@@ -340,7 +340,9 @@ var TypeChecker = (function(AST,assertF){
 		} );
 		
 		_add( types.DefinitionType, function(){
-			return _wrap( this.definition() )+'['+ this.args().join() +']';
+			if( this.args().length > 0 )
+				return _wrap( this.definition() )+'['+ this.args().join() +']';
+			return _wrap( this.definition() );
 		} );
 		
 		var tmp = function(){ return this.name(); };
@@ -796,6 +798,30 @@ var TypeChecker = (function(AST,assertF){
 			}
 	};
 	
+	// for visited definitions
+	var Table = function(){
+		var visited = {};
+		
+		var keyF = function(a,b){
+			return a < b ? a+b : b+a;
+		};
+		
+		this.contains = function(a,b){
+			return visited.hasOwnProperty( keyF(a,b) );
+		}
+		
+		this.set = function(a,b,value){
+			visited[keyF(a,b)] = value;
+		}
+		
+		this.get = function(a,b){
+			return visited[keyF(a,b)];
+		}
+	};
+	
+	//var typedef_eq = new Table();
+	var typedef_sub = new Table();
+	
 	/**
 	 * Subtyping two types.
 	 * @param {Type} t1
@@ -996,17 +1022,33 @@ var TypeChecker = (function(AST,assertF){
 			}
 
 			case types.DefinitionType:{
-				if( t1.definition() !== t2.definition() )
-					return false;
-				
-				var t1s = t1.args();
-				var t2s = t2.args();
-				if( t1s.length !== t2s.length )
-					return false;
-				for( var i=0;i<t1s.length;++i )
-					if( !subtypeOf( t1s[i], t2s[i] ) )
+				if( t1.definition() === t2.definition() ){
+					var t1s = t1.args();
+					var t2s = t2.args();
+					if( t1s.length !== t2s.length )
 						return false;
-				return true;
+					for( var i=0;i<t1s.length;++i )
+						if( !subtypeOf( t1s[i], t2s[i] ) )
+							return false;
+					return true;
+				}
+
+				// different definitions
+				var a = t1.definition();
+				var b = t2.definition();				
+				
+				// already seen
+				if( typedef_sub.contains(a,b) ){
+					return typedef_sub.get(a,b);
+				}
+				
+				// assume the same, should fail elsewhere if wrong assuming
+				typedef_sub.set(true);
+				// unfold and try again
+				var tmp = subtypeOf( unAll(t2,false,true), unAll(t2,false,true) );
+				typedef_sub.set(tmp);
+					
+				return tmp;
 			}
 			default:
 				error( "@subtype: Not expecting " +t1.type );
@@ -2345,13 +2387,17 @@ for(var i=0;i<visited.length;++i){
 						return tmp;
 				
 				// look for type definitions
-				var lookup = typedefs[label];
+				//var lookup = typedefs[label];
 				var lookup_args = typedefs_args[label];
-		
-				// found something
-				if( lookup !== undefined && lookup !== null &&
-					 lookup_args.length === 0 )
-					return lookup;
+
+				// found something, and is already defined
+				//if( lookup !== undefined && lookup_args.length === 0 )
+				//	return lookup;
+				
+				// if found something, that is not yet defined
+				if( lookup_args !== undefined &&
+						lookup_args.length === 0 )
+					return new DefinitionType(label, new Array(0));
 		
 				assert( 'Unknown type '+label, ast);
 			};
@@ -3063,7 +3109,9 @@ for(var i=0;i<visited.length;++i){
 				
 				// ok to allow unfoldings
 				unfoldDefinition = tmp_unfold;
-				
+				// reset typedef equality table
+				//typedef_eq = new Table();
+				typedef_sub = new Table();
 			}
 			return check( ast.exp, env );
 		} finally {

@@ -1,8 +1,11 @@
 //OK Function Value
-//FAIL Fix-point reached after 2 unfolds
+//FAIL 'DefinitionType' not a SumType
+
+typedef A = B
+typedef B = A
 
 // this should fail gracefully
-fun( y : !(rec A.rec B.A) ).
+fun( y : !A ).
 	case y of
 		asd#n -> 0
 	end

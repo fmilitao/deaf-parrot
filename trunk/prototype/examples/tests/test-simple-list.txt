@@ -1,14 +1,15 @@
 //OK {}
 //OK ![]
 
-typedef Empty = E#(exists p.( ref p :: rw p [] ))
+typedef Empty = E#(exists p.( ref p :: rw p [] )) 
 
-typedef Node = forall T.rec Node.(  
+// a node is 'generic' in T.
+typedef Node<T> = 
 	// List Node
-	N#(exists p.( ref p :: rw p [T,Node] ) )
+	N#( exists p.( ref p :: rw p [T,Node[T]] ) ) +
 	// Empty Node 
-	+ E#(exists p.( ref p :: rw p [] ) )
- )
+	E#( exists p.( ref p :: rw p [] ) )
+
 
 let ListADT = <T> 
 	<Empty:Empty,
@@ -16,18 +17,13 @@ let ListADT = <T>
 	newList = fun ( _ : [] ).
 		E#new {},
 	
-	// FIXME: should packing consider up to subtyping?
-	// right now it matches the type with 'equals' and therefore we need
-	// to state the return type in order to consider it.
 	insertN = fun _( e : T , list : Node[T] ): Node[T].
 		N#new {e,list},
-	// FIXME: without intersection types there is no way to relate the two
-	// abstracted types and therefore, we must have this code duplication
+
 	insertE = fun _( e : T , list : Empty ): Node[T].
 		N#new {e,list},
 
-	// This might be a be dumb that the last element does not contain
-	// anything stored in it...
+	// A bit silly that the last element does not contain anything stored in it...
 	remove = fun( list : Node[T] ).
 		case list of
 			N#node ->
@@ -52,9 +48,14 @@ end
 
 ;
 
-let LIST = <T> {
-	newList = fun ( _ : [] ).E#new {},
-	insert = fun ( e : T , list : Node[T] ).N#new {e,list},
+// Another version is *without* abstracting the list, just to test unfolding 
+// through subtyping on the empty and non-empty list types.
+// WARNING: slightly unpleasantly lengthy types...
+let GenericList = <T> {
+	newList = fun ( _ : [] ).
+		E#new {},
+	insert = fun ( e : T , list : Node[T] ).
+		N#new {e,list},
 	remove = fun( list : Node[T] ).
 		case list of
 			N#node ->
@@ -76,7 +77,7 @@ let LIST = <T> {
 	in
 
 	// client code:
-	let f = LIST[int] in
+	let f = GenericList[int] in
 		open <l1,list> = new (f.newList {}) in
 			// inserting is always good
 			list := (f.insert 1 !list);
@@ -98,14 +99,14 @@ let LIST = <T> {
 				              E#n ->
 				              	open <l0,ptr> = n in
 				              		delete ptr;
-									Empty#{}
-								end
+				              		Empty#{}
+				              	end
 				            | N#n -> 
-								open <l0,ptr> = n in
-									let [e,next] = !ptr in
-										delete ptr;
-										Rec next
-									end
+				              	open <l0,ptr> = n in
+				              		let [e,next] = !ptr in
+				              			delete ptr;
+				              			Rec next
+				              		end
 								end
 							end
 			            in
@@ -120,5 +121,3 @@ let LIST = <T> {
 		end
 	end
 end
-
-

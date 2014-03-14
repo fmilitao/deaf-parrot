@@ -1,11 +1,8 @@
 //OK Function Value
-//FAIL Fix-point reached after 2 unfolds
+//FAIL Invalid dereference 'A'
 
+typedef A = A
 
 // this should fail gracefully
-fun( x : rec A.A ).!x
-
-// Should rec A.A <: !rec A.A ?
-// I guess this should be true?
-// mostly yes but for algorithmic convenience.
+fun( x : A ).!x
 

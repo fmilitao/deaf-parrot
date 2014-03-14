@@ -1,6 +1,5 @@
 
 // Simple Linked List (ADT)
-// mostly just to test recursive types...
 
 typedef Empty = E#(exists p.( ref p :: rw p [] )) 
 

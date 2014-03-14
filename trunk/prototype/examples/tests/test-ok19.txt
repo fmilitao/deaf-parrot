@@ -1,5 +1,11 @@
-//OK {0,Function Value,Function Value,Function Value,Function Value,Function Value}
-//OK [exists A.A,!(rec A.(test#A+fail#int) -o exists R.(test#rec A.(test#A+fail#int)+fail#int)),!(rec A.(a#A+b#int) -o exists YY.YY),!(rec A.(case1#A+case2#int) -o (Meh#exists R.R+Number#!int)),!(rec A.(l#A+q#int) -o exists TT.TT),!(rec A.(case1#rec A.(case1#A+case2#int)+case2#int) -o (Meh#exists R.R))]
+//OK {0,Function Value,Function Value,Function Value,Function Value}
+//OK [exists A.A,!(Rec0 -o exists R.(test#Rec0+fail#int)),!(Rec1 -o exists YY.(a#Rec1+b#int)),!(Rec3 -o (Meh#exists R.R+Number#!int)),!(Rec4 -o exists TT.TT)]
+
+typedef Rec0 = test#Rec0 + fail#int
+typedef Rec1 = a#Rec1 + b#int
+typedef Rec2 = a#Rec2 + b#int
+typedef Rec3 = case1#Rec3 + case2#int
+typedef Rec4 = l#Rec4 + q#int
 
 {
 
@@ -8,32 +14,30 @@
 < exists I.!I :A, <int:I,0> >,
 
 // this should fail to replace anything otherwise it could not yield
-// a proper sum type (substitution lemma)
-// RESULT: !(rec A.(test#A+fail#int) -o exists R.(rec A.(test#A+fail#int)))
-fun( x : rec A.(test#A + fail#int) ).(
-	<test#(rec A.(test#A + fail#int)):R,x>
+// a proper sum type (cf. substitution lemma)
+// RESULT: !((test#Rec0+fail#int) -o exists R.(test#Rec0+fail#int))
+fun( x : Rec0 ).(
+	<(test#Rec0):R,x>
 ),
 
-// replaces everything
-// RESULT: !(rec A.(a#A+b#int) -o exists YY.(YY))
-fun( x : rec A.(a#A + b#int) ).(
-	<(rec B.(a#B + b#int)):YY,x>
+// replaces everything, note that type definitions are checked nominally, not
+// structurally, which means that Rec1 != Rec2
+// RESULT: !((a#Rec1+b#int) -o exists YY.(a#Rec1+b#int))
+fun( x : Rec1 ).(
+	<Rec2:YY,x>
 ),
 
-// RESULT: !(rec A.(case1#A+case2#int) -o Meh#exists R.(R)+Number#!int)
-fun( x : rec A.(case1#A + case2#int) ).(
+
+
+// RESULT: !(Rec3 -o (Meh#exists R.R+Number#!int))
+fun( x : Rec3 ).(
 	case x of
-	  case1#n -> Meh#<(rec B.(case1#B + case2#int)):R,n>
+	  case1#n -> Meh#<Rec3:R,n>
 	| case2#n -> Number#n
 	end
 ),
 
-// RESULT: !(rec A.(l#A+q#int) -o exists TT.(TT))
-fun( y : rec A.l#A+q#int ). <l#(rec B.l#B+q#int)+q#int:TT,y>,
-
-// RESULT: !(rec A.(case1#rec A.(case1#A+case2#int)+case2#int) -o Meh#exists R.(R))
-fun( x : rec A.(case1#(rec A.(case1#A + case2#int)) + case2#int) ).(
-   Meh#<(rec B.(case1#B + case2#int)):R,x>
-)
+// RESULT: !(Rec4 -o exists TT.(TT))
+fun( y : Rec4 ). <l#Rec4+q#int:TT,y>
 
 }
