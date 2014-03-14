@@ -1,25 +1,31 @@
 //OK Function Value
 //OK !forall T.(!([] -o exists E.exists NE.(![push: !((T :: (E (+) NE)) -o (![] :: NE)),del: !(([] :: E) -o ![]),isEmpty: !(([] :: (E (+) NE)) -o (Empty#(![] :: E)+NonEmpty#(![] :: NE))),pop: !(([] :: NE) -o (T :: (E (+) NE)))] :: E))
 
-typedef EMPT = forall p.( rw p !(E#[]) )
-typedef ELEM = forall T.rec X.forall p.( rw p (N#[T,exists q.( (!ref q) :: (EMPT[q] (+) X[q]) )] ))
+
+typedef EMPT<p> = rw p !(E#[])
+typedef ELEM<T,p> = rw p (N#[T,exists q.( (!ref q) :: ( EMPT[q] (+) ELEM[T,q] ) )] )
+
+typedef AUX<E,NE> = ![
+	pop : [] :: NE -o int :: ( E (+) NE ),
+	isEmpty : [] :: ( NE (+) E ) -o Empty#([]::E) + NonEmpty#([]::NE) ]
 
 let newStack = <T>fun( _ : [] ).
 	open <h,head> = new E#{} in
 		<EMPT[h]:E,	// Empty Stack
-		<ELEM[T][h]:NE, // NonEmpty Stack
+		<ELEM[T,h]:NE, // NonEmpty Stack
 		{
 		
-			push = fun( e : T :: ( EMPT[h] (+) ELEM[T][h] ) ).
+			push = fun( e : T :: ( EMPT[h] (+) ELEM[T,h] ) ).
 				@h 
 				open <n,next> = new !head in
-					head := N#{ e , <n,next::(EMPT[n] (+) ELEM[T][n])> }
+					head := N#{ e , <n,next::(EMPT[n] (+) ELEM[T,n])> }
 				end,
 
+	
 			del = fun( _ : [] :: (EMPT[h]) ).
-				( delete head ; {} ),
+				( delete head ; {} ),			
 			
-			isEmpty = fun( _ : [] :: ( EMPT[h] (+) ELEM[T][h] ) ).
+			isEmpty = fun( _ : [] :: ( EMPT[h] (+) ELEM[T,h] ) ).
 				@h // opens alternative
 				case !head of
 					E#v ->
@@ -27,25 +33,25 @@ let newStack = <T>fun( _ : [] ).
 						Empty#({}::(EMPT[h]))
 				|	N#n ->
 						head := N#n;
-						NonEmpty#({}::(ELEM[T][h]))
-				end,
-				
-			pop = fun( _ : [] :: ( ELEM[T][h] ) ).
+						NonEmpty#({}::(ELEM[T,h]))
+				end,				
+
+			pop = fun( _ : [] :: ( ELEM[T,h] ) ).
 				case !head of
 					N#a ->
 						let [e,n] = a in
 							open <t,ptr> = n in
 								@t (
-									head := !ptr;
-									delete ptr
-								);
+								head := !ptr;
+								delete ptr );
 								e
 							end
 						end
 				end
-			
+
 		} :: rw h !(E#[]) >>
 	end
+	
 	in
 	newStack
 end

@@ -1,23 +1,22 @@
 //OK {Function Value,Function Value,Function Value}
-//OK ![!(rec A.(L#rec B.(L#B+Q#int)+Q#int) -o rec A.(L#A+Q#int)),!(int -o (boolean -o !!int)),!(rec A.A -o rec A.rec B.A)]
+//OK ![!(Rec1 -o Rec2),!(int -o (boolean -o !!int)),!(Rec3 -o Rec3)]
+
+typedef Rec0 = Rec1
+typedef Rec1 = L#Rec1 + Q#int
+typedef Rec2 = L#Rec2 + Q#int
+typedef Rec3 = Rec3
 
 {
-// this should work
+
 // also folds when result is given, note that result can only
 // appear if the function has a label (for recursive)
-// RESULT: !(rec A.(L#rec B.(L#B+Q#int)+Q#int) -o rec A.(L#A+Q#int))
-fun Test( x : rec A.( L#(rec B.L#B + Q#int) + Q#int )):rec A.(L#A + Q#int) .x
+// RESULT: !(Rec1 -o Rec2)
+fun Test( x : Rec1 ):Rec2 .x,
 
-,
-
-// this should work
 // RESULT: !(int -o boolean -o !!int)
-fun A( x : int , y : boolean ) : !!int .x
+fun A( x : int , y : boolean ) : !!int .x,
 
-,
-
-// this should work
 // RESULT: !(rec A.(A) -o rec A.(rec B.(A)))
-fun Test( x : rec A.A ):(rec A.rec B.A).x
+fun( x : Rec3 ).x
 
 }
