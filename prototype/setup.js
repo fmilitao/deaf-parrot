@@ -222,7 +222,6 @@ $(document).ready(function() {
 	        $("#examples").slideToggle(100);
 	    });
 	    
-	    //FIXME OLD EXAMPLES
 	    var addOldExample = function(file,name){
 			name = name.replace('.txt','');
 			var button = $('<button/>', {
