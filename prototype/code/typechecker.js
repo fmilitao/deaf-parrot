@@ -1885,10 +1885,44 @@ var tryBang = function(ast,env,f){ // tryBang : is a closure
 	return result;
 };
 
+/*
+ * Extracts the initial state of a protocol, or undefined if it is not a
+ * protocol that was given as argument.
+ */
+
+var getInitialState = function( p ){
+	p = unAll(p,false,true);
+	switch(p.type){
+		case types.RelyType:
+			return p.rely();
+		case types.AlternativeType:{
+			var tmp = new AlternativeType();
+			var alts = p.inner();
+			for(var i=0;i<alts.length;++i){
+				var j = getInitialState(alts[i]);
+				if( j === undefined )
+					return undefined;
+				tmp.add(j);
+			}
+			return tmp;
+		}
+		case types.NoneType:
+			return NoneType;
+		default:
+			// not a valid protocol?
+			return undefined;
+	}
+}
+
 /**
  * Protocol Conformance
  */
 var checkProtocolConformance = function( s, a, b, ast ){
+	var initial = getInitialState(s);
+//console.debug( s + ' >> ' + initial )
+	assert( initial === undefined || 'Protocol-Protocol conformance is WIP', ast );
+	
+	
 	var visited = [];
 	var max_visited = 100; // safeguard against 'equals' bugs...
 	

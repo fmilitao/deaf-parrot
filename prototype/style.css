@@ -189,6 +189,11 @@ a:visited {
 	font-size: 8pt;
 }
 
+.heading-title:hover:after {
+	content: ' (press to expand/collapse) ';
+	font-weight: normal;
+}
+
 .button {
 	width: 100%;
 	margin: 1px 0 1px 0;

@@ -1,3 +1,6 @@
+FIXME:
+	rename examples to match their description in the paper.
+
 
 PROBLEM:
 	recursive functions that are recursive with foralls, such that:
