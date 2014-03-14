@@ -219,7 +219,7 @@ $(document).ready(function() {
 		
 		//$("#examples").hide();
 	    $("#examples-button").click(function() {
-	        $("#examples").slideToggle(25);
+	        $("#examples").slideToggle(100);
 	    });
 	    
 	    //FIXME OLD EXAMPLES
@@ -251,7 +251,7 @@ $(document).ready(function() {
 		});
 		
 	    $("#old-examples-button").click(function() {
-	        $(_OLD_EXAMPLES_).slideToggle(25);
+	        $(_OLD_EXAMPLES_).slideToggle(100);
 	    });
 		$(_OLD_EXAMPLES_).hide();
 	    

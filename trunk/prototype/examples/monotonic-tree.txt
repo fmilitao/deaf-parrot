@@ -1,4 +1,5 @@
 //FIXME: recursive functions need to be changed to allow forall on recursion.
+//FIXME: need to rethink how recursive types should work.
 
 // states
 typedef Nil   <q> = rw q (Nil#[])
