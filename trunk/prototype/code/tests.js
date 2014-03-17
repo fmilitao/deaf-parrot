@@ -102,6 +102,7 @@ var typechecker = TypeChecker.check;
 var tc_subtype = TypeChecker.subtypeOf;
 var tc_equals = TypeChecker.equals;
 var tc_factory = TypeChecker.factory;
+var tc_typedef = TypeChecker.typedef;
 
 var ast_cache = {};
 var parseCode = function(file,data) {
