@@ -28,6 +28,25 @@ TODO:
 		
 		return (visitor[ast.kind])(ast,env);
 	}
+	
+	// Maybe define a generic visitor?
+	var Visitor = function(obj){ // object to attach visitors
+		var visitor = obj;
+		this.$add = function(kind,fun){
+			error( !visitor.hasOwnProperty(kind) || ("Duplicated " +kind) );
+			visitor[kind] = fun;
+		};
+		this.$get = function(kind){
+			return visitor[kind];
+		};
+		this.visit = function(){
+			var kind = arguments[0];
+			var args = arguments.slice(1);
+			if( !visitor.hasOwnProperty( kind ) )
+				error( "@visitor: Not expecting " +kind );
+			return visitor[kind](args);
+		};
+	}
 
 TODO:
 ONLY subtype uses this, EQUALS should too!

@@ -309,7 +309,29 @@ module('Typechecker.Components');
 		equal( equals( t_alt2, t_alt1 ), false );
 		equal( equals( t_alt1, t_alt2 ), false );
 
+		// to avoid type defintion collisions 
+		tc_typedef.reset();
+		
+		// M<t> = ref t
+		tc_typedef.addType('M',[new t.LocationVariable('t')]);
+		tc_typedef.addDefinition('M',new t.ReferenceType(new t.LocationVariable('t')));
+		
+		var t_def1 = new t.DefinitionType('M',[new t.LocationVariable('q')]); // M[q]
+		var t_def2 = new t.ReferenceType(new t.LocationVariable('q')); // ref q
+		var t_def3 = new t.ReferenceType(new t.LocationVariable('w')); // req w
+		
+		equal( equals( t_def1, t_def2 ), true );
+		equal( equals( t_def1, t_def3 ), false );
+		equal( equals( t_def3, t_def1 ), false );
+
+// TODO more!
+		// N<t> = ref q
+		// N[t] == M[t]
+		// M[t] == M[t]
+		// M[q] != M[t] // infinite loop version?
+
 // TODO testing renaming, cycles (typedefinitions)
+// recursive definition, multiple steps.
 	} );
 
 	test( "Subtyping", function() {	
@@ -519,16 +541,13 @@ module('Typechecker.Components');
 
 		equal( subtype(t_alt2,t_alt1), false);
 		equal( subtype(t_alt1,t_alt2), true);
-		// XXX missing X <: X  (+) Y subtype rule:
-		// test of the base case, (not between alternatives)
 		equal( subtype(new t.TypeVariable('X'), t_alt1), true ); 
-
-// TODO renaming, cycles, type definitions.
 
 		var t_rw1 = new t.CapabilityType(new t.LocationVariable('t'),t_int);
 		var t_rw2 = new t.CapabilityType(new t.LocationVariable('t'),t_boolean);
 		equal( subtype(t_rw1,t_rw2), false);
 
+// TODO renaming, cycles, type definitions.
 	});
 	
 module('Fetch Files');

@@ -358,25 +358,6 @@ var TypeChecker = (function(AST,assertF){
 	// VISITORS
 	//
 	
-	/* TODO: generic visitor?
-	var Visitor = function(obj){ // object to attach visitors
-		var visitor = obj;
-		this.$add = function(kind,fun){
-			error( !visitor.hasOwnProperty(kind) || ("Duplicated " +kind) );
-			visitor[kind] = fun;
-		};
-		this.$get = function(kind){
-			return visitor[kind];
-		};
-		this.visit = function(){
-			var kind = arguments[0];
-			var args = arguments.slice(1);
-			if( !visitor.hasOwnProperty( kind ) )
-				error( "@visitor: Not expecting " +kind );
-			return visitor[kind](args);
-		};
-	}; */
-	
 	/**
 	 * Searchs types 't' for location variable 'loc'. isFree if NOT present.
 	 * @param {Type} t that is to be traversed
@@ -2383,7 +2364,10 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 				assert( type.type === types.LocationVariable ||
 					('Cannot alt-open '+type), ast.type );
 				
-				// FIXME also allow to give a type, not just a location.
+				// Note: it's important that it is just a (location) name to
+				// ensure it can work on multiple alternative cases. Thus, using
+				// for instance, just 't' will work on multiple branches where 't'
+				// may exist.
 				var cap = env.removeNamedCap( type.name() );
 				
 				assert( cap !== undefined || ('Missing cap: '+cap), ast.type );
@@ -2924,17 +2908,14 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 			
 			case AST.kinds.CAP_STACK: 
 			return function( ast, env ){
-// FIXME recursive types?
 				var exp = check( ast.exp, env );
 				var cap = check( ast.type, env );
-				
-// FIXME broken
+
 				cap = unAll(cap,false,true);
 				
 				var c = autoStack ( null, cap, env, ast.type );
 				// make sure that the capabilities that were extracted from 
 				// the typing environment can be used as the written cap.
-//debugger
 				assert( subtypeOf( c , cap ) ||
 					('Incompatible capability "'+c+'" vs "'+cap+'"'), ast.type );
 				return new StackedType( exp, cap );
