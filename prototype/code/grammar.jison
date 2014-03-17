@@ -322,9 +322,11 @@ tuple :
 
 function :
 	FUN IDENTIFIER '(' parameter ends_with_type
-		{ $$ = AST.makeFunction( $2, $4, $5.exp, $5.result, @$ ); }
+		{ $$ = AST.makeFunction( $2, $4, $5.exp, $5.result, null, @$ ); }
+	| FUN IDENTIFIER quantification '(' parameter ends_with_type
+		{ $$ = AST.makeFunction( $2, $5, $6.exp, $6.result, $3, @$ ); }
 	| FUN '(' parameter ends_without_type
-		{ $$ = AST.makeFunction( null, $3, $4.exp, $4.result, @$ ); }
+		{ $$ = AST.makeFunction( null, $3, $4.exp, $4.result, null, @$ ); }
 	;
 
 ends_with_type :
@@ -332,7 +334,7 @@ ends_with_type :
 		{ $$ = { result : $3, exp : $5 }; }
 	| ',' parameter ends_with_type
 		{ $$ = { result : AST.makeFunType($2.type,$3.result),
-			exp : AST.makeFunction( null , $2, $3.exp, $3.result, @$ ) }; }
+			exp : AST.makeFunction( null , $2, $3.exp, $3.result, null, @$ ) }; }
 	;
 
 ends_without_type :
@@ -340,7 +342,14 @@ ends_without_type :
 		{ $$ = { result : null, exp : $3 }; }
 	| ',' parameter ends_without_type
 		{ $$ = { result : AST.makeFunType($2.type,$3.result),
-			exp : AST.makeFunction( null , $2, $3.exp, $3.result, @$ ) }; }
+			exp : AST.makeFunction( null , $2, $3.exp, $3.result, null, @$ ) }; }
+	;
+
+quantification :
+	  '<' IDENTIFIER '>'
+	  	{ $$ = [$2]; }
+	| '<' IDENTIFIER '>' quantification
+		{ $$ = [$2].concat($4); }
 	;
 	
 parameter : 

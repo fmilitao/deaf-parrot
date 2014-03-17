@@ -2920,21 +2920,51 @@ for(var i=0;i<visited.length;++i){
 				var result = null;
 				var initial_size = env.size();
 				var e = env.newScope();
-				var arg_type = check( ast.parms.type, e );
+				var arg_type;
 				
 				// CAREFUL: only if it is a recursive function
 				// can it have a result type attached, otherwise
 				// currying of multiple arguments becomes messy
 				
 				if( ast.rec !== null ){ // recursive function
+					
+					// set up quantifiers
+					if( ast.type_pars !== null ){
+						var types = ast.type_pars;
+						for(var i=0;i<types.length;++i){
+							var n = types[i];
+							e.setType( n, isTypeVariableName(n) ?
+								new TypeVariable(n) : new LocationVariable(n) );
+						}
+					}
+					
+					e = e.newScope(); // hides quantification from end scope below
+					
+					arg_type = check( ast.parms.type, e );
 					result = check( ast.result, e );
 					assert( result !== null ||'No result type given on recursive function', ast );								
 					// note that all recursive functions must be pure
-					var rec_fun = new BangType(
-						new FunctionType(arg_type, result)
-					);
+					
+					var rec_fun = new FunctionType(arg_type, result);
+					
+					// set up quantifiers
+					if( ast.type_pars !== null ){
+						var types = ast.type_pars;
+						for(var i=types.length-1;i>=0;--i){
+							var n = types[i];
+							rec_fun = new ForallType( 
+								isTypeVariableName(n) ?
+									new TypeVariable(n) :
+									new LocationVariable(n), rec_fun 
+							);
+						}
+					}
+					rec_fun = new BangType( rec_fun );
+					
 					assert( e.set( ast.rec, rec_fun ) ||
 						("Identifier '" + ast.rec + "' already in scope"), ast );
+				}else{
+					arg_type = check( ast.parms.type, e );
 				}
 				
 				//var unstacked = unAll(arg_type,ast, false, true); 
@@ -2954,7 +2984,23 @@ for(var i=0;i<visited.length;++i){
 					assert( initial_size === env.size() ||
 						'Linear recursive function.', ast );
 					// use the written return type
-					res = result;
+					//res = result;
+					
+					var f = new FunctionType(arg_type, result);
+					
+					// set up quantifiers
+					if( ast.type_pars !== null ){
+						var types = ast.type_pars;
+						for(var i=types.length-1;i>=0;--i){
+							var n = types[i];
+							f = new ForallType( 
+								isTypeVariableName(n) ?
+									new TypeVariable(n) :
+									new LocationVariable(n), f 
+							);
+						}
+					}
+					return f;
 				}
 				
 				return new FunctionType(arg_type, res);

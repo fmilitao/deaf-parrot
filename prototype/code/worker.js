@@ -442,7 +442,7 @@ var info = function(tp,pos){
 				// already seen
 				jj.ast += '<br/>'+as;
 				if( jj.cf === '' )
-					jj.cf = cf;
+					jj.cf += cf; // in case there is more than 1 conformance
 				seen = true;
 				break;
 			}
