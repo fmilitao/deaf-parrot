@@ -1901,10 +1901,29 @@ var TypeChecker = (function(AST,assertF){
 		// if there's something to stack
 		var ll = tmp.inner().length;
 		if( ll > 0 ){
-			if( ll === 1 ) // no need for star when there is just one
-				res = new StackedType( res, tmp.inner()[0] );
-			else
-				res = new StackedType( res, tmp );
+			// result is already a stacked type
+			if( res.type === types.StackedType ){
+				var old_cap = res.right();
+				
+				if( old_cap.type === types.StarType ){
+					var old_star = old_cap.inner();
+					// add contents of the old star to our tmp types
+					for( var i=0;i<old_star.length;++i ){
+						tmp.add( old_star[i] );
+					}
+					// rebuild result
+					res = new StackedType( res.left(), tmp );
+				}else{
+					// not a star, but was stacked, just add that as another option
+					tmp.add( old_cap );
+					res = new StackedType( res.left(), tmp );
+				}
+			}else{
+				if( ll === 1 ) // no need for star when there is just one
+					res = new StackedType( res, tmp.inner()[0] );
+				else
+					res = new StackedType( res, tmp );
+			}
 		}
 
 		// 2. pack all bounded location variables
@@ -1980,10 +1999,37 @@ var getInitialState = function( p ){
  */
 var checkProtocolConformance = function( s, a, b, ast ){
 	var initial = getInitialState(s);
+	
+	if( initial === undefined ){
+		conformanceStateProtocol(s,a,b,ast);
+	}else{
+		conformanceProtocolProtocol(initial,s,a,b,ast);
+	}
+};
+
+var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 //console.debug( s + ' >> ' + initial )
-	assert( initial === undefined || 'Protocol-Protocol conformance is WIP', ast );
+	assert( 'Protocol-Protocol conformance is WIP', ast );
+
+	var visited = []; // visited configurations
+	var max_visited = 100; // safeguard against 'equals' bugs, bounds execution.
 	
-	
+	// checks if configuration was already visited
+	var contains = function(s,p,a,b){
+		for( var i=0; i<visited.length; ++i ){
+			var tmp = visited[i];
+			// XXX warning, subtyping on the state only?
+			if( subtypeOf(s,tmp[0]) && equals(p,tmp[1]) && 
+					equals(a,tmp[2]) && equals(b,tmp[3]) )
+				return true;
+		}
+		return false;
+	}
+
+	hack_info = visited; // XXX hack to expose 'visited'
+};
+
+var conformanceStateProtocol = function( s, a, b, ast ){
 	var visited = []; // visited configurations
 	var max_visited = 100; // safeguard against 'equals' bugs, bounds execution.
 	
@@ -2083,20 +2129,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 		// more for debug than requirement of the algorhtm.
 		assert( max_visited-- > 0 || 'ERROR: MAX VISITED', ast);
 	}
-	
-/*	
- //XXX how to attach this to info? such that iff SHARE, then there should be
-// protocol conformance information.
- 
-	var printConfiguration = function(conf){
-		return conf[0].toString()+' <<>> '+conf[1].toString()+' || '+conf[2].toString();
-	}
-	
-console.debug( 'Configurations: '+(100-max_visited));
-for(var i=0;i<visited.length;++i){
-	console.debug( i+': '+printConfiguration(visited[i]) );
-}	
-*/
+
 	hack_info = visited; // XXX hack to expose 'visited'
 
 };
@@ -2732,6 +2765,8 @@ for(var i=0;i<visited.length;++i){
 			case AST.kinds.DEFOCUS: 
 			return function( ast, env ){
 				var dg = env.defocus_guarantee();
+				
+				assert( dg !== undefined || 'No pending guarantee', ast );
 				
 				var res = autoStack( null , dg.guarantee(), env, ast );
 				

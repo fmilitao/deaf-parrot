@@ -1,3 +1,9 @@
 
+<A>fun( x : !(int -o [] :: A) ).
+	( x 0;
+	x 1 )
+
+/*
 fun R<q>( x : ref q ) : ref q.
 	(R[q] x)
+	*/
