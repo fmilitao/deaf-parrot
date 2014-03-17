@@ -46,6 +46,7 @@ let newSpaghetti = fun( _ : [] ).
 						| Nil#y ->
 							nn := Nil#y;
 							defocus;
+//FIXME: bug when defocusing nested focus blocks.
 							share (NilP[tt]) as (NilP[tt]) || (NilP[tt]);
 							head := < tt, nn :: ( (NodeP[tt]) (+) (NilP[tt]) ) >
 						end;
