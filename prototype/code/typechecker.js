@@ -840,9 +840,6 @@ var TypeChecker = (function(AST,assertF){
 		}
 	};
 	
-	//var typedef_eq = new Table();
-	var typedef_sub = new Table();
-	
 	/**
 	 * Subtyping two types.
 	 * @param {Type} t1
@@ -3145,8 +3142,11 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 		return (visitor[ast.kind])( ast, env );
 	}
 	
+	
 	var type_info;
 	var unique_counter;
+	//var typedef_eq = new Table();
+	var typedef_sub;
 	var typedef;
 	
 	var TypeDefinition = function(){
@@ -3182,17 +3182,15 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 			inRecDef = false;
 			typedefs = {};
 			typedefs_args = {};
+			typedef_sub = new Table();
 		}
 	};
+
+	// exporting these to facilitate testing.	
+	exports.subtypeOf = subtypeOf;
+	exports.equals = equals;
 	
 	exports.check = function(ast,typeinfo,loader){
-		// XXX This is a hack of some sort to enable testing of the inner components
-		// of the type checker... not very pleasant trick, but useful for brevity.
-		if( ast instanceof Function ){
-			ast(exports,subtypeOf,equals);
-			return null;
-		}
-		
 		// stats gathering
 		var start = new Date().getTime();
 		type_info = [];
@@ -3203,6 +3201,9 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 			// reset typechecke's state.
 			unique_counter = 0;
 			typedef = new TypeDefinition();
+			// reset typedef equality table
+			//typedef_eq = new Table();
+			typedef_sub = new Table();
 			var env = new Environment(null);
 				
 			if( ast.imports !== null ){
@@ -3266,10 +3267,6 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 				
 				// ok to allow unfoldings
 				typedef.endRecDefs();
-
-				// reset typedef equality table
-				//typedef_eq = new Table();
-				typedef_sub = new Table(); //XXX
 			}
 			return check( ast.exp, env );
 		} finally {
