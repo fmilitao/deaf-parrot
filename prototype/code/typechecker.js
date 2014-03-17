@@ -358,6 +358,25 @@ var TypeChecker = (function(AST,assertF){
 	// VISITORS
 	//
 	
+	/* TODO: generic visitor?
+	var Visitor = function(obj){ // object to attach visitors
+		var visitor = obj;
+		this.$add = function(kind,fun){
+			error( !visitor.hasOwnProperty(kind) || ("Duplicated " +kind) );
+			visitor[kind] = fun;
+		};
+		this.$get = function(kind){
+			return visitor[kind];
+		};
+		this.visit = function(){
+			var kind = arguments[0];
+			var args = arguments.slice(1);
+			if( !visitor.hasOwnProperty( kind ) )
+				error( "@visitor: Not expecting " +kind );
+			return visitor[kind](args);
+		};
+	}; */
+	
 	/**
 	 * Searchs types 't' for location variable 'loc'. isFree if NOT present.
 	 * @param {Type} t that is to be traversed
@@ -1035,7 +1054,7 @@ var TypeChecker = (function(AST,assertF){
 
 				// different definitions
 				var a = t1.definition();
-				var b = t2.definition();				
+				var b = t2.definition();	
 				
 				// already seen
 				if( typedef_sub.contains(a,b) ){
@@ -1043,10 +1062,10 @@ var TypeChecker = (function(AST,assertF){
 				}
 				
 				// assume the same, should fail elsewhere if wrong assuming
-				typedef_sub.set(true);
+				typedef_sub.set(a,b,true);
 				// unfold and try again
-				var tmp = subtypeOf( unAll(t2,false,true), unAll(t2,false,true) );
-				typedef_sub.set(tmp);
+				var tmp = subtypeOf( unAll(t1,false,true), unAll(t2,false,true) );
+				typedef_sub.set(a,b,tmp);
 					
 				return tmp;
 			}
@@ -1972,7 +1991,8 @@ var checkProtocolConformance = function( s, a, b, ast ){
 	var contains = function(s,a,b){
 		for( var i=0; i<visited.length; ++i ){
 			var tmp = visited[i];
-			if( equals(s,tmp[0]) && equals(a,tmp[1]) && equals(b,tmp[2]) )
+			// XXX warning, subtyping on the state only?
+			if( subtypeOf(s,tmp[0]) && equals(a,tmp[1]) && equals(b,tmp[2]) )
 				return true;
 		}
 		return false;

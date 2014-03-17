@@ -8,7 +8,7 @@ import println
 // head node
 typedef H<p> = // note the two recursions
 			( rw p !(Empty#[]) => rw p !(Empty#[]) ; (H[p]) ) (+)
-			( rw p (Closed#[]) => none ) (+) 
+			( rw p !(Closed#[]) => none ) (+) 
 			( rw p (Node#[int,exists q.(!ref q :: (H[q]) )]) => none )
 
 // tail node
