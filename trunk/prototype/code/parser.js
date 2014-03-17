@@ -140,8 +140,11 @@ var AST = new function(){
 	this.makeDelete = function(exp,info){
 		return aux( this.kinds.DELETE, {exp: exp}, info);
 	}
-	this.makeFunction = function(rec,parms,exp,result,info){
-		return aux( this.kinds.FUN, {rec:rec,parms: parms, result:result,exp: exp}, info);
+	this.makeFunction = function(rec,parms,exp,result,type_params,info){
+		return aux( this.kinds.FUN, {rec:rec,parms: parms, 
+			result:result, // recursive functions must give result
+			type_pars: type_params, // if rec function has type pars (foralls)
+			exp: exp}, info);
 	}
 	this.makeID = function(id,info){
 		return aux( this.kinds.ID, {text: id}, info);
