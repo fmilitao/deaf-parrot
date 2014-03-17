@@ -674,14 +674,16 @@ var TypeChecker = (function(AST,assertF){
 		var def2 = t2.type === types.DefinitionType;
 		if( def1 ^ def2 ){
 //debugger
-			if( def1 && typedefs[t1.definition()].type === t2.type ){
+			if( def1 && 
+				typedef.getDefinition(t1.definition()).type === t2.type ){
 				t1 = unfoldDefinition(t1);
 				// if unfolding worked
 				if( t1.type !== types.DefinitionType ){
 					return equals( t1, t2 );
 				}
 			}
-			if( def2 && typedefs[t2.definition()].type === t1.type ){
+			if( def2 && 
+				typedef.getDefinition(t2.definition()).type === t1.type ){
 				t2 = unfoldDefinition(t2);
 				// if unfolding worked
 				if( t2.type !== types.DefinitionType ){
@@ -1602,7 +1604,7 @@ var TypeChecker = (function(AST,assertF){
 		// all other cases must have exactly the same type
 		if( equals(t1,t2) )
 			return t1;
-		// FIXME should subtyping replace equals? i.e.:
+		// should subtyping replace equals? i.e.:
 		// if( subtypeOf(t1,t2) ) return t2;
 		// if( subtypeOf(t2,t1) ) return t1;
 			
@@ -1676,12 +1678,13 @@ var TypeChecker = (function(AST,assertF){
 	}
 	
 	var unfoldDefinition = function(d){
-		if( d.type !== types.DefinitionType )
+		if( d.type !== types.DefinitionType ||
+				typedef.isInRecDefs() )
 			return d;
 		
-		var t = typedefs[d.definition()];
+		var t = typedef.getDefinition(d.definition());
 		var args = d.args();
-		var pars = typedefs_args[d.definition()];
+		var pars = typedef.getType(d.definition());
 		for(var i=0;i<args.length;++i){
 			t = substitution(t,pars[i],args[i]);
 		}
@@ -2000,10 +2003,11 @@ var getInitialState = function( p ){
 var checkProtocolConformance = function( s, a, b, ast ){
 	var initial = getInitialState(s);
 	
+	 // XXX hack to expose 'visited'
 	if( initial === undefined ){
-		conformanceStateProtocol(s,a,b,ast);
+		hack_info = conformanceStateProtocol(s,a,b,ast);
 	}else{
-		conformanceProtocolProtocol(initial,s,a,b,ast);
+		hack_info = conformanceProtocolProtocol(initial,s,a,b,ast);
 	}
 };
 
@@ -2026,7 +2030,27 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 		return false;
 	}
 
-	hack_info = visited; // XXX hack to expose 'visited'
+	/* TODO:
+	 * Protocol-Protocol conformance requires matching each step on the other.
+	 * sim( s, p, q )
+	 *		if( s,p --> s',p' ) then, later on it must consider all possible
+					// find MATCHING step from original 
+					s,q --> s',q'
+					// yield result
+					==> { s : s' , p : p', q : q' }
+					--> throws exception is no matching step.
+	 * 
+	 * work( s, p, a, b )
+	 * // each individual protocol
+	 * 	sim( s, a, p )
+	 * 	sim( s, b, p )
+	 * 
+	 * // then try either one or another.
+	 * 	sim( s, p, a) or sim ( s, p, b ); 
+	 */
+	
+
+	return visited;
 };
 
 var conformanceStateProtocol = function( s, a, b, ast ){
@@ -2130,7 +2154,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 		assert( max_visited-- > 0 || 'ERROR: MAX VISITED', ast);
 	}
 
-	hack_info = visited; // XXX hack to expose 'visited'
+	return visited;
 
 };
 
@@ -2445,13 +2469,8 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 						return tmp;
 				
 				// look for type definitions
-				//var lookup = typedefs[label];
-				var lookup_args = typedefs_args[label];
+				var lookup_args = typedef.getType(label);
 
-				// found something, and is already defined
-				//if( lookup !== undefined && lookup_args.length === 0 )
-				//	return lookup;
-				
 				// if found something, that is not yet defined
 				if( lookup_args !== undefined &&
 						lookup_args.length === 0 )
@@ -2621,7 +2640,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 			return function( ast, env ){
 				var id = ast.name;
 				var args = ast.args;
-				var t_args = typedefs_args[id];
+				var t_args = typedef.getType(id);
 				
 				assert( t_args !== undefined || ('Unknown typedef: '+id), ast);
 				assert( t_args.length === args.length ||
@@ -3021,8 +3040,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 				}else{
 					arg_type = check( ast.parms.type, e );
 				}
-				
-				//var unstacked = unAll(arg_type,ast, false, true); 
+				 
 				var unstacked = unstack(arg_type,e,ast);
 				
 				assert( e.set( id, purify(unstacked) ) ||
@@ -3129,10 +3147,46 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 	
 	var type_info;
 	var unique_counter;
-	var typedefs, typedefs_args;
+	var typedef;
+	
+	var TypeDefinition = function(){
+		var inRecDef = false;
+		var typedefs = {};
+		var typedefs_args = {};
+				
+		// these 3 methods must be used to avoid attempts at resoving recursive
+		// definitions before they are all inserted/defined.
+		this.beginRecDefs = function(){ inRecDef = true; };
+		this.endRecDefs = function(){ inRecDef = false; };
+		this.isInRecDefs = function(){ return inRecDef; };
+		
+		this.addType = function(name,array){
+			if( typedefs_args.hasOwnProperty(name) )
+				return false;
+			typedefs_args[name] = array;
+			return true;
+		};
+		this.addDefinition = function(name,definition){
+			if( typedefs.hasOwnProperty(name) )
+				return false;
+			typedefs[name] = definition;
+			return true;
+		};
+		this.getType = function(name){
+			return typedefs_args[name];
+		};
+		this.getDefinition = function(name){
+			return typedefs[name];
+		};
+		this.reset = function(){
+			inRecDef = false;
+			typedefs = {};
+			typedefs_args = {};
+		}
+	};
 	
 	exports.check = function(ast,typeinfo,loader){
-		// This is a hack of some sort to enable testing of the inner components
+		// XXX This is a hack of some sort to enable testing of the inner components
 		// of the type checker... not very pleasant trick, but useful for brevity.
 		if( ast instanceof Function ){
 			ast(exports,subtypeOf,equals);
@@ -3148,8 +3202,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 				
 			// reset typechecke's state.
 			unique_counter = 0;
-			typedefs = {};
-			typedefs_args = {};
+			typedef = new TypeDefinition();
 			var env = new Environment(null);
 				
 			if( ast.imports !== null ){
@@ -3167,8 +3220,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 			}
 				
 			if( ast.typedefs !== null ){
-				// typedefs[i] - id:id, type:type, pars:pars
-				
+
 				// first phase - extract all argument definitions, note that
 				// duplication is not checked at this stage
 				for(var i=0;i<ast.typedefs.length;++i){
@@ -3186,20 +3238,18 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 								new TypeVariable(n) : new LocationVariable(n);
 						}
 					}
-					typedefs_args[ast.typedefs[i].id] = args;
+					
+					assert( typedef.addType(it.id,args) 
+						|| ('Duplicated typedef: '+it.id), it );
 				}
 				
 				// must avoid attempting to unfold what is not yet definied.
-				var tmp_unfold = unfoldDefinition;
-				unfoldDefinition = function(t){ return t; };
+				typedef.beginRecDefs();
 
 				for(var i=0;i<ast.typedefs.length;++i){
-					var type = ast.typedefs[i];
-					assert( !typedefs.hasOwnProperty(type.id) ||
-						('Duplicated typedef: '+type.id), type )
-						
+					var type = ast.typedefs[i];						
 					var tmp_env = env.newScope();
-					var args = typedefs_args[type.id];
+					var args = typedef.getType(type.id);
 					
 					// sets the variables, if there are any to setup
 					if( args !== null ){
@@ -3209,15 +3259,17 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 						}
 					}
 					
-					// map of type names to typechecker types.
-					typedefs[type.id] = check( type.type, tmp_env );
+					// map of type names to typechecker types
+					assert( typedef.addDefinition(type.id, check(type.type, tmp_env)) 
+						|| ('Duplicated typedef: '+type.id), type );
 				}
 				
 				// ok to allow unfoldings
-				unfoldDefinition = tmp_unfold;
+				typedef.endRecDefs();
+
 				// reset typedef equality table
 				//typedef_eq = new Table();
-				typedef_sub = new Table();
+				typedef_sub = new Table(); //XXX
 			}
 			return check( ast.exp, env );
 		} finally {
