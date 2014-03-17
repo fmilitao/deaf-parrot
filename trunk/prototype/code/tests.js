@@ -521,6 +521,11 @@ module('Typechecker.Components');
 			equal( subtype(new t.TypeVariable('X'), t_alt1), true ); 
 
 // TODO renaming, cycles, type definitions.
+
+			var t_rw1 = new t.CapabilityType(new t.LocationVariable('t'),t_int);
+			var t_rw2 = new t.CapabilityType(new t.LocationVariable('t'),t_boolean);
+			equal( subtype(t_rw1,t_rw2), false);
+			
 		} );
 	});
 	
