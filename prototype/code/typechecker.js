@@ -2672,8 +2672,19 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 				assert( exp.type === types.ForallType || 
 					('Not a Forall '+exp.toString()), ast.exp );
 				
-				// FIXME: not checking that it's the correct kind!
 				var packed = check(ast.id, env);
+				var variable = exp.id();
+
+				if( variable.type === types.LocationVariable ){
+						assert( packed.type === types.LocationVariable ||
+							( 'Not LocationVariable: '+packed.type ), ast.id );
+				}
+				
+				if( variable.type === types.TypeVariable ){
+						assert( packed.type !== types.LocationVariable ||
+							( 'Cannot be LocationVariable' ), ast.id );
+				}
+
 				return substitution( exp.inner(), exp.id(), packed );
 			};
 			
@@ -3141,19 +3152,16 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 		}
 		return (visitor[ast.kind])( ast, env );
 	}
-	
-	
-	var type_info;
-	var unique_counter;
-	//var typedef_eq = new Table();
-	var typedef_sub;
-	var typedef;
-	
+		
 	var TypeDefinition = function(){
 		var inRecDef = false;
 		var typedefs = {};
 		var typedefs_args = {};
-				
+
+		// reset typedef equality table
+		//typedef_eq = new Table();
+		typedef_sub = new Table();
+
 		// these 3 methods must be used to avoid attempts at resoving recursive
 		// definitions before they are all inserted/defined.
 		this.beginRecDefs = function(){ inRecDef = true; };
@@ -3186,9 +3194,16 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 		}
 	};
 
+	var type_info;
+	var unique_counter;
+	//var typedef_eq = new Table();
+	var typedef_sub;
+	var typedef = new TypeDefinition();
+
 	// exporting these to facilitate testing.	
 	exports.subtypeOf = subtypeOf;
 	exports.equals = equals;
+	exports.typedef = typedef;
 	
 	exports.check = function(ast,typeinfo,loader){
 		// stats gathering
@@ -3200,10 +3215,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 				
 			// reset typechecke's state.
 			unique_counter = 0;
-			typedef = new TypeDefinition();
-			// reset typedef equality table
-			//typedef_eq = new Table();
-			typedef_sub = new Table();
+			typedef.reset();
 			var env = new Environment(null);
 				
 			if( ast.imports !== null ){
