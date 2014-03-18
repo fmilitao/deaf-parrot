@@ -651,6 +651,7 @@ var TypeChecker = (function(AST,assertF){
 		// Only tries to unfold definition if it appears that it will help. 
 //XXX: this is a very shallow lookup. won't work with more than 2 typedefs in sequence
 //XXX: why won't this work with unAll? (another debugging session needed...)
+//XXX: recursion due to unfolding using equals breaks this... hmmm
 		var def1 = t1.type === types.DefinitionType;
 		var def2 = t2.type === types.DefinitionType;
 		if( def1 ^ def2 ){
@@ -658,6 +659,7 @@ var TypeChecker = (function(AST,assertF){
 			if( def1 && 
 				typedef.getDefinition(t1.definition()).type === t2.type ){
 				t1 = unfoldDefinition(t1);
+				//t1 = unAll(t1,false,true);
 				// if unfolding worked
 				if( t1.type !== types.DefinitionType ){
 					return equals( t1, t2 );
@@ -1618,7 +1620,7 @@ var TypeChecker = (function(AST,assertF){
 			// returns whatever we got, will likely fail due to a packed
 			// definition anyway. But it's not our fault that you gave us a type
 			// that is bogus/infinite recursive!
-//XXX statically detect infinitely recursive type definitions?
+//TODO statically detect infinitely recursive type definitions?
 		}
 		return t;
 

@@ -1,4 +1,10 @@
 
+
+typedef Cell<z,h> = ref z :: (Node[z,h])
+typedef Node<z,h> = rw z (N#(exists p.(ref p :: (Cell[p,h])))) (+) rw z (E#(ref h))
+
+// what to show?
+
 /*
 <A>fun( x : !(int -o [] :: A) ).
 	( x 0;
@@ -13,3 +19,4 @@ fun R<X><q>( x : X ) : int.
    (R[q][q] x)
    
 */
+

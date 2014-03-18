@@ -308,8 +308,18 @@ module('Typechecker.Components');
 		t_alt2.add( t_int );
 		equal( equals( t_alt2, t_alt1 ), false );
 		equal( equals( t_alt1, t_alt2 ), false );
-
-		// to avoid type defintion collisions 
+	} );
+	
+	test( "Equals.Typedef", function() {
+		var t = tc_factory;
+		var equals = tc_equals;
+	
+		var t_none = new t.NoneType();
+		var t_int = new t.PrimitiveType('int');
+		var t_boolean = new t.PrimitiveType('boolean');
+		var t_string = new t.PrimitiveType('string');
+	
+		// ensures no type definition collisions with old definitions 
 		tc_typedef.reset();
 		
 		// M<t> = ref t
@@ -323,8 +333,23 @@ module('Typechecker.Components');
 		equal( equals( t_def1, t_def2 ), true );
 		equal( equals( t_def1, t_def3 ), false );
 		equal( equals( t_def3, t_def1 ), false );
+		
+		// Q<t> = M[t]
+		tc_typedef.addType('Q',[new t.LocationVariable('t')]);
+		tc_typedef.addDefinition('Q',new t.DefinitionType('M',[new t.LocationVariable('t')]));
 
-// TODO more!
+		var t_def4 = new t.DefinitionType('Q',[new t.LocationVariable('q')]); // Q[q]
+
+		//equal( equals( t_def4, t_def2 ), true ); //FIXME bug
+		equal( equals( t_def4, t_def3 ), false );
+		equal( equals( t_def3, t_def4 ), false );
+		
+
+/*		
+		tc_typedef.beginRecDefs();
+		// ...
+		tc_typedef.endRecDefs();
+	*/	
 		// N<t> = ref q
 		// N[t] == M[t]
 		// M[t] == M[t]
@@ -546,9 +571,55 @@ module('Typechecker.Components');
 		var t_rw1 = new t.CapabilityType(new t.LocationVariable('t'),t_int);
 		var t_rw2 = new t.CapabilityType(new t.LocationVariable('t'),t_boolean);
 		equal( subtype(t_rw1,t_rw2), false);
-
-// TODO renaming, cycles, type definitions.
 	});
+	
+	test( "Subtyping.Typedef", function() {
+		var t = tc_factory;
+		var subtype = tc_subtype;
+	
+		var t_none = new t.NoneType();
+		var t_int = new t.PrimitiveType('int');
+		var t_boolean = new t.PrimitiveType('boolean');
+		var t_string = new t.PrimitiveType('string');
+	
+		// ensures no type definition collisions with old definitions 
+		tc_typedef.reset();
+		
+		// M<t> = ref t
+		tc_typedef.addType('M',[new t.LocationVariable('t')]);
+		tc_typedef.addDefinition('M',new t.ReferenceType(new t.LocationVariable('t')));
+		
+		var t_def1 = new t.DefinitionType('M',[new t.LocationVariable('q')]); // M[q]
+		var t_def2 = new t.ReferenceType(new t.LocationVariable('q')); // ref q
+		var t_def3 = new t.ReferenceType(new t.LocationVariable('w')); // req w
+		
+		equal( subtype( t_def1, t_def2 ), true );
+		equal( subtype( t_def1, t_def3 ), false );
+		equal( subtype( t_def3, t_def1 ), false );
+		
+		// Q<t> = M[t]
+		tc_typedef.addType('Q',[new t.LocationVariable('t')]);
+		tc_typedef.addDefinition('Q',new t.DefinitionType('M',[new t.LocationVariable('t')]));
+
+		var t_def4 = new t.DefinitionType('Q',[new t.LocationVariable('q')]); // Q[q]
+
+		equal( subtype( t_def4, t_def2 ), true );
+		equal( subtype( t_def4, t_def3 ), false );
+		equal( subtype( t_def3, t_def4 ), false );
+		
+/*		
+		tc_typedef.beginRecDefs();
+		// ...
+		tc_typedef.endRecDefs();
+	*/	
+		// N<t> = ref q
+		// N[t] == M[t]
+		// M[t] == M[t]
+		// M[q] != M[t] // infinite loop version?
+// TODO renaming, cycles, type definitions.
+// TODO testing renaming, cycles (typedefinitions)
+// recursive definition, multiple steps.
+	} );
 	
 module('Fetch Files');
 
