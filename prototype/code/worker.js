@@ -276,12 +276,16 @@ var printAST = function(ast,r){
 }
 
 var printConformance = function(cf){
-	var tmp = '<table class="typing_conformance"><tr><th>State</th><th>P</th><th>Q</th></tr>';
+	var tmp = '<table class="typing_conformance"><tr><th>State</th>'+
+		'<th>P0</th><th>P1</th>'+
+		(cf[0].length > 3 ? '<th>P2</th>': '')+
+		'</tr>';
 	for(var i=0;i<cf.length;++i){
 		tmp+= '<tr>'+
 			'<td>'+ toHTML(cf[i][0]) +'</td>'+ 
 			'<td>'+ toHTML(cf[i][1]) +'</td>'+
-			'<td>'+ toHTML(cf[i][2]) +'</td>'+ 
+			'<td>'+ toHTML(cf[i][2]) +'</td>'+
+			(cf[0].length > 3 ? ('<td>'+ toHTML(cf[i][3]) +'</td>') : '')+ 
 			'</tr>';
 	}
 	return tmp+'</table>';

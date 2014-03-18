@@ -1079,7 +1079,7 @@ var TypeChecker = (function(AST,assertF){
 		this.$caps = [];
 		this.$parent = parent;
 		
-		// FIXME first attempt
+		// FIXME first attempt, FIXME this does not appear to correctly handle nested defocus-guarantees
 		this.$defocus_guarantee = null;
 		this.$defocus_env = null;
 		
@@ -1993,7 +1993,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 
 var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 //console.debug( s + ' >> ' + initial )
-	assert( 'Protocol-Protocol conformance is WIP', ast );
+//	assert( 'Protocol-Protocol conformance is WIP', ast );
 
 	var visited = []; // visited configurations
 	var max_visited = 100; // safeguard against 'equals' bugs, bounds execution.
@@ -2009,29 +2009,198 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 		}
 		return false;
 	}
-
-	/* TODO:
-	 * Protocol-Protocol conformance requires matching each step on the other.
-	 * sim( s, p, q )
-	 *		if( s,p --> s',p' ) then, later on it must consider all possible
-					// find MATCHING step from original 
-					s,q --> s',q'
-					// yield result
-					==> { s : s' , p : p', q : q' }
-					--> throws exception is no matching step.
-	 * 
-	 * work( s, p, a, b )
-	 * // each individual protocol
-	 * 	sim( s, a, p )
-	 * 	sim( s, b, p )
-	 * 
-	 * // then try either one or another.
-	 * 	sim( s, p, a) or sim ( s, p, b ); 
-	 */
 	
+	// must match 'p', starting with 's', with resulting state 'm'
+	// returns the residual protocol of p
+	var simM = function( s, p, m ){
+		p = unAll(p,false,true);
+		
+		if( p.type === types.NoneType ){
+			assert( equals( s, m ) ||
+						('[Protocol Conformance]: '+s+' not <: '+m) );
+			return p;
+		}
+		
+		// now state
+		if( s.type === types.AlternativeType ){
+			var tmp_s = null;
+			var tmp_p = null;
+			var alts = s.inner();
+
+			for( var i=0; i<alts.length; ++i ){
+				var tmp = simM( alts[i], p, m );
+				if( tmp_s === null ){
+					tmp_s = tmp.s;
+					tmp_p = tmp.p;
+				}else{
+					assert( (equals( tmp_s, tmp.s ) && equals( tmp_p, tmp.p )) ||
+						('[Protocol Conformance] Alternatives mimatch.\n'+
+						'(1)\tstate:\t'+tmp_s+'\n\tstep:\t'+tmp_p+'\n'+
+						'(2)\tstate:\t'+tmp.s+'\n\tstep:\t'+tmp.p+'\n'), ast );
+				}
+			}
+
+			return tmp_p;
+		}
+		
+		// tries to find one alternative that works
+		if( p.type === types.AlternativeType ){
+			var alts = p.inner();
+			for( var i=0; i<alts.length; ++i ){
+				try{
+					return simM( s, alts[i], o );
+				}catch(e){
+					// assume it is an assertion error, continue to try with
+					// some other alternative
+					continue;
+				}
+			}
+			assert( '[Protocol Conformance] No matching alternative.\n'+
+				'state:\t'+s+'\n'+
+				'step:\t'+p, ast );
+		}
+
+		// base case
+		var pp = unAll( p, false, true );
+		
+		assert( pp.type === types.RelyType ||
+			('Expecting RelyType, got: '+pp.type+'\n'+pp), ast);
+		
+		assert( subtypeOf( s, pp.rely() ) ||
+			('Invalid Step: '+s+' VS '+pp.rely()), ast );
+		
+		var next = pp.guarantee();
+		assert( next.type === types.GuaranteeType ||
+			('Expecting GuaranteeType, got: '+next.type), ast);
+
+		assert( equals( next.guarantee(), m ) ||
+			('[Protocol Conformance]: '+s+' not <: '+m) );
+
+		return next.rely();
+	}
+	
+	// returns {state, protocol, other}
+	var simP = function( s, p, o ){
+		// unfold recursive types, etc.
+		p = unAll(p,false,true);
+		
+		// first protocol
+		if( p.type === types.NoneType ){
+			var m = simM( s, o, s );
+			return { state : s, protocol: p, other: m };
+		}
+
+		// now state
+		if( s.type === types.AlternativeType ){
+			var tmp_s = null;
+			var tmp_p = null;
+			var tmp_m = null;
+			var alts = s.inner();
+			// note that the resulting state must match, up to subtyping
+			// i.e. in case of alternatives these should be merged
+//XXX for now equality is enough?
+			for( var i=0; i<alts.length; ++i ){
+				var tmp = simP( alts[i], p, o );
+				if( tmp_s === null ){
+					tmp_s = tmp.state;
+					tmp_p = tmp.protocol;
+					tmp_m = tmp.other;
+				}else{
+					assert( ( equals( tmp_s, tmp.state ) && 
+									equals( tmp_p, tmp.protocol ) &&
+										equals( tmp_m, tmp.other ) ) ||
+						('[Protocol Conformance] Alternatives mimatch'), ast );
+				}
+			}
+			// now match on the other one.
+			//var m = simM( s, o, tmp_s );
+			return { state : tmp_s, protocol: tmp_p, other: tmp_m };
+		}
+		
+		// tries to find one alternative that works
+		if( p.type === types.AlternativeType ){
+			var alts = p.inner();
+			for( var i=0; i<alts.length; ++i ){
+				try{
+					return simM( s, alts[i], o );
+				}catch(e){
+					// assume it is an assertion error, continue to try with
+					// some other alternative
+					continue;
+				}
+			}
+			assert( '[Protocol Conformance] No matching alternative.\n'+
+				'state:\t'+s+'\n'+
+				'step:\t'+p, ast );
+		}
+
+		// base case
+		var pp = unAll( p, false, true );
+		
+		assert( pp.type === types.RelyType ||
+			('Expecting RelyType, got: '+pp.type+'\n'+pp), ast);
+		
+		assert( subtypeOf( s, pp.rely() ) ||
+			('Invalid Step: '+s+' VS '+pp.rely()), ast );
+		
+		var next = pp.guarantee();
+		assert( next.type === types.GuaranteeType ||
+			('Expecting GuaranteeType, got: '+next.type), ast);
+
+		var m = simM( s, o, next.guarantee() );
+		return { state: next.guarantee(), protocol: next.rely(), other: m };
+	}
+	
+	var work = [];
+	work.push( [s,p,a,b] ); // initial configuration
+
+//debugger
+	while( work.length > 0 ){
+		var state = work.pop();
+		
+		var _s = state[0];
+		var _p = state[1];
+		var _a = state[2];
+		var _b = state[3];
+		
+		// already done
+		if( contains(_s,_p,_a,_b) )
+			continue;
+
+		visited.push( [_s,_p,_a,_b] );
+
+		// 1. step on _a matched by _p
+		var l = simP( _s, _a, _p );
+		work.push( [ l.state, l.other, l.protocol, _b ] );
+		
+		// 2. step on _b matched by _p
+		var r = simP( _s, _b, _p );
+		work.push( [ r.state, r.other, _a, r.protocol ] );
+		
+		// 3. step on _p matched by either _a or _b
+		try{
+			// 3.a) attempt with _a
+			var q = simP( _s, _p, _a );
+			work.push( [ q.state, q.protocol, q.other, _b ] );
+		}catch(e){
+			// _a failed!
+			// 3.b) attempt with _b
+			var q = simP( _s, _p, _b );
+			work.push( [ q.state, q.protocol, _a, q.other ] );
+			// if this throws exception, then it's a real conformance error.
+		}
+		
+		// This is useful to safeguard against different JS implementations...
+		// more for debug than requirement of the algorhtm.
+		assert( max_visited-- > 0 || 'ERROR: MAX VISITED', ast);
+	}
+
+	//TODO remember possibility of extending a step.
 
 	return visited;
 };
+
+// XXX how to test this? it should return true/false
 
 var conformanceStateProtocol = function( s, a, b, ast ){
 	var visited = []; // visited configurations
@@ -2779,7 +2948,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 			return function( ast, env ){
 				var dg = env.defocus_guarantee();
 				
-				assert( dg !== undefined || 'No pending guarantee', ast );
+				assert( dg !== undefined || 'No pending defocus-guarantee', ast );
 				
 				var res = autoStack( null , dg.guarantee(), env, ast );
 				
