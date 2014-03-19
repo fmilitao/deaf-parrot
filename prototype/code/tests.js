@@ -103,6 +103,14 @@ var tc_subtype = TypeChecker.subtypeOf;
 var tc_equals = TypeChecker.equals;
 var tc_factory = TypeChecker.factory;
 var tc_typedef = TypeChecker.typedef;
+var tc_conformance = function(s,a,b){
+	try{
+		TypeChecker.checkProtocolConformance(s,a,b,null);
+		return true;
+	}catch(e){
+		return false;
+	}
+};
 
 var ast_cache = {};
 var parseCode = function(file,data) {
@@ -619,6 +627,17 @@ module('Typechecker.Components');
 // TODO renaming, cycles, type definitions.
 // TODO testing renaming, cycles (typedefinitions)
 // recursive definition, multiple steps.
+	} );
+	
+	test( "Protocol Conformance", function() {
+		var t = tc_factory;
+		var conformance = tc_conformance;
+		
+		var t_none = new t.NoneType();
+
+		equal( conformance( t_none, t_none, t_none ), true );
+
+// TODO actual tests...
 	} );
 	
 module('Fetch Files');
