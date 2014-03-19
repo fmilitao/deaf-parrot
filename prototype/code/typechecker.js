@@ -613,14 +613,20 @@ var TypeChecker = (function(AST,assertF){
 		}
 	};
 	
+	/*
+	 * This is a "simpler" substitution where 'from' must either be a
+	 * LocationVariable or a TypeVariable. This restriction simplifies the
+	 * equality test since we are no longer attempting to match complete types
+	 * and instead are just looking for TypeVariables or LocationVariables
+	 */
 	var substitutionVarsOnly = function(type,from,to){
-		if( from.type !== to.type ||
-			( from.type !== types.LocationVariable && 
-				from.type !== types.TypeVariable ) ){
+		if( from.type !== types.LocationVariable && 
+				from.type !== types.TypeVariable ){
 			error( "@substitutionVarsOnly: not a Type/LocationVariable" );
 		}
 		return substitutionF(type,from,to,function(a,b){
 			// same type and same name
+			// WARNING: unstated assumption that 'a' is 'from'
 			return a.type === b.type && a.name() === b.name();
 		});
 	};
@@ -647,27 +653,19 @@ var TypeChecker = (function(AST,assertF){
 		// exactly the same
 		if( t1 === t2 )
 			return true;
-				
-		// Only tries to unfold definition if it appears that it will help. 
-//XXX: this is a very shallow lookup. won't work with more than 2 typedefs in sequence
-//XXX: why won't this work with unAll? (another debugging session needed...)
-//XXX: recursion due to unfolding using equals breaks this... hmmm
+
 		var def1 = t1.type === types.DefinitionType;
 		var def2 = t2.type === types.DefinitionType;
 		if( def1 ^ def2 ){
-//debugger
-			if( def1 && 
-				typedef.getDefinition(t1.definition()).type === t2.type ){
-				t1 = unfoldDefinition(t1);
-				//t1 = unAll(t1,false,true);
+			if( def1 ){
+				t1 = unAll(t1,false,true);
 				// if unfolding worked
 				if( t1.type !== types.DefinitionType ){
 					return equals( t1, t2 );
 				}
 			}
-			if( def2 && 
-				typedef.getDefinition(t2.definition()).type === t1.type ){
-				t2 = unfoldDefinition(t2);
+			if( def2 ){
+				t2 = unAll(t2,false,true);
 				// if unfolding worked
 				if( t2.type !== types.DefinitionType ){
 					return equals( t1, t2 );
@@ -1661,8 +1659,10 @@ var TypeChecker = (function(AST,assertF){
 		var t = typedef.getDefinition(d.definition());
 		var args = d.args();
 		var pars = typedef.getType(d.definition());
+		// type definitions will only replace Type or Location Variables, we
+		// can use the simpler kind of substitution.
 		for(var i=0;i<args.length;++i){
-			t = substitution(t,pars[i],args[i]);
+			t = substitutionVarsOnly(t,pars[i],args[i]);
 		}
 		return t;
 	}
@@ -1981,6 +1981,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 	var initial = getInitialState(s);
 	
 	 // XXX hack to expose 'visited'
+	 // XXX too much duplicated code.
 	if( initial === undefined ){
 		hack_info = conformanceStateProtocol(s,a,b,ast);
 	}else{

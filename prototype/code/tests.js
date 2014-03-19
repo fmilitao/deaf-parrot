@@ -348,7 +348,7 @@ module('Typechecker.Components');
 
 		var t_def4 = new t.DefinitionType('Q',[new t.LocationVariable('q')]); // Q[q]
 
-		//equal( equals( t_def4, t_def2 ), true ); //FIXME bug
+		equal( equals( t_def4, t_def2 ), true );
 		equal( equals( t_def4, t_def3 ), false );
 		equal( equals( t_def3, t_def4 ), false );
 		
