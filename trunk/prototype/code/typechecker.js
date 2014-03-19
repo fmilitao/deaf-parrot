@@ -1365,8 +1365,6 @@ var TypeChecker = (function(AST,assertF){
 				var tmp = unfoldDefinition(cap);
 				return capContains(name,tmp); 
 			}
-			case types.NoneType: // FIXME: does this make sense?
-				return true;
 			default:
 				// another types disallowed, for now
 				error( 'Error @capContains: '+cap.type );
@@ -1412,7 +1410,6 @@ var TypeChecker = (function(AST,assertF){
 			// 3rd: merge caps
 			if( merge_caps ){
 				// this will merge b with a's caps
-				// TODO
 				
 				// find those caps that are common to both
 				// and those that will need to be merged with (+)
@@ -1620,7 +1617,6 @@ var TypeChecker = (function(AST,assertF){
 			// returns whatever we got, will likely fail due to a packed
 			// definition anyway. But it's not our fault that you gave us a type
 			// that is bogus/infinite recursive!
-//TODO statically detect infinitely recursive type definitions?
 		}
 		return t;
 
@@ -1678,13 +1674,12 @@ var TypeChecker = (function(AST,assertF){
 		case types.CapabilityType:
 		case types.TypeVariable:
 		case types.DefinitionType:
-		// FIXME: is duplication check stil needed??
-			assert( d.setCap( t ) || ('Duplicated capability for '+ t), ast );
+			d.setCap( t );
 			break;
 		case types.StarType:{
 			var tps = t.inner();
 			for( var i=0; i<tps.length; ++i ){
-				unstackType(tps[i], d, ast);
+				unstackType( tps[i], d, ast );
 			}
 			break;
 		}
@@ -1692,7 +1687,7 @@ var TypeChecker = (function(AST,assertF){
 			// nothing to add to the environment
 			break;
 		default: 
-			assert( 'Cannot unstack: '+t+' of '+t.type, ast);
+			assert( 'Cannot unstack: '+t+' of '+t.type, ast );
 		}
 	}
 	
@@ -1707,7 +1702,6 @@ var TypeChecker = (function(AST,assertF){
 	 * 	much as possible.
 	 */
 	var autoStack = function(t,p,e,a){
-		// FIXME, rethink now that there exists a cap search...
 		p = unAll(p,false,true);
 		
 		switch( p.type ) {
