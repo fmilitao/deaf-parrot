@@ -2212,12 +2212,10 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 	return visited.array;
 };
 
-// XXX how to test this? it should return true/false
-
 var conformanceStateProtocol = function( s, a, b, ast ){
 
-	var max_visited = 100; // safeguard against 'equals' bugs, bounds execution.	
 	var visited = new Visited();
+	var max_visited = 100; // safeguard against 'equals' bugs, bounds execution.	
 	
 	var sim = function(s,p){
 		// unfold recursive types, etc.
@@ -2233,7 +2231,6 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 			var tmp_p = null;
 			var alts = s.inner();
 			for( var i=0;i<alts.length; ++i ){
-				//debugger;
 				var tmp = sim(alts[i],p);
 				if( tmp_s === null ){
 					tmp_s = tmp.s;
@@ -3358,6 +3355,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 	exports.subtypeOf = subtypeOf;
 	exports.equals = equals;
 	exports.typedef = typedef;
+	exports.checkProtocolConformance = checkProtocolConformance;
 	
 	exports.check = function(ast,typeinfo,loader){
 		// stats gathering
