@@ -49,11 +49,8 @@ TODO:
 	}
 
 TODO:
-ONLY subtype uses this, EQUALS should too!
-	see test-ok19.txt
-	>> check type definition equality structurally (by their inner structure)
-	instead of nominally (by their name) as it is now.
-	>> this could be precomputed together with cycles in the definitions.
+	-- statically detect infinitely recursive type definitions.
+	-- check typedefs structurally, instead of nominally.
 
 ========================================
 
