@@ -1914,13 +1914,13 @@ var TypeChecker = (function(AST,assertF){
 				case types.LocationVariable:
 					if( !isFree(res,el) ){
 						var loc = new LocationVariable(null);
-						res = new ExistsType( loc, substitution( res, el, loc ) );
+						res = new ExistsType( loc, substitutionVarsOnly( res, el, loc ) );
 					}
 					break;
 				case types.TypeVariable:
 					if( !isFree(res,el) ){
 						var loc = new TypeVariable(null);
-						res = new ExistsType( loc, substitution( res, el, loc ) );
+						res = new ExistsType( loc, substitutionVarsOnly( res, el, loc ) );
 					}
 					break;
 				default:
@@ -2400,7 +2400,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 					('Variable mismatch, expecting '+locvar.type
 					+' got '+value.id().type), ast.val);
 
-				value = substitution( value.inner(), value.id(), locvar );
+				value = substitutionVarsOnly( value.inner(), value.id(), locvar );
 				// unfold anything that became newly available
 				value = unAll( value, false, true );
 				
@@ -2840,7 +2840,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 							( 'Cannot be LocationVariable' ), ast.id );
 				}
 
-				return substitution( exp.inner(), exp.id(), packed );
+				return substitutionVarsOnly( exp.inner(), exp.id(), packed );
 			};
 			
 			case AST.kinds.TAGGED: 

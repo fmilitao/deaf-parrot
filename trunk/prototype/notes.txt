@@ -1,16 +1,6 @@
 FIXME:
 	rename examples to match their description in the paper.
 
-
-PROBLEM:
-	recursive functions that are recursive with foralls, such that:
-
-fun Init<q><T>( x : A , q : B ) : C
-
-should have type:
-	forall q.forall T.( A -o B -o C )
-
-
 TODO:
 	>> error messages: ['the type:', type, 'was not needed']
 	to enable HTML prints of error messages.
