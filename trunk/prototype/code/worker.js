@@ -272,20 +272,21 @@ var libTyper = function( file, ctx ){
 var printAST = function(ast,r){
 	return "@"+(ast.line+1)+":"+ast.col+'-'
 		+(ast.last_line+1)+':'+ast.last_col+' '+ast.kind;
-		//+'\nType: '+toHTML(r) //FIXME too much to show?
+		//+'\nType: '+toHTML(r) // Too much to also show resulting type.
 }
 
 var printConformance = function(cf){
+	var has3 = (cf[0][3] !== undefined);
 	var tmp = '<table class="typing_conformance"><tr><th>State</th>'+
 		'<th>P0</th><th>P1</th>'+
-		(cf[0].length > 3 ? '<th>P2</th>': '')+
+		( has3 ? '<th>P2</th>': '')+
 		'</tr>';
 	for(var i=0;i<cf.length;++i){
 		tmp+= '<tr>'+
 			'<td>'+ toHTML(cf[i][0]) +'</td>'+ 
 			'<td>'+ toHTML(cf[i][1]) +'</td>'+
 			'<td>'+ toHTML(cf[i][2]) +'</td>'+
-			(cf[0].length > 3 ? ('<td>'+ toHTML(cf[i][3]) +'</td>') : '')+ 
+			( has3 ? ('<td>'+ toHTML(cf[i][3]) +'</td>') : '')+ 
 			'</tr>';
 	}
 	return tmp+'</table>';

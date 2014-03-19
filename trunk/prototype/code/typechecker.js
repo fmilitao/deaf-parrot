@@ -1942,11 +1942,14 @@ var tryBang = function(ast,env,f){ // tryBang : is a closure
 	return result;
 };
 
+//
+// Protocol Conformance
+//
+
 /*
  * Extracts the initial state of a protocol, or undefined if it is not a
  * protocol that was given as argument.
  */
-
 var getInitialState = function( p ){
 	p = unAll(p,false,true);
 	switch(p.type){
@@ -1966,7 +1969,7 @@ var getInitialState = function( p ){
 		case types.NoneType:
 			return NoneType;
 		default:
-			// not a valid protocol?
+			// not a valid protocol
 			return undefined;
 	}
 }
@@ -1985,24 +1988,40 @@ var checkProtocolConformance = function( s, a, b, ast ){
 	}
 };
 
-var conformanceProtocolProtocol = function( s, p, a, b, ast ){
-//console.debug( s + ' >> ' + initial )
-//	assert( 'Protocol-Protocol conformance is WIP', ast );
-
-	var visited = []; // visited configurations
-	var max_visited = 100; // safeguard against 'equals' bugs, bounds execution.
+var Visited = function(){
+	var visited = [];
 	
-	// checks if configuration was already visited
-	var contains = function(s,p,a,b){
+	this.array = visited;
+	
+	this.contains = function( state ){
+		var s = state[0];
+		var p = state[1];
+		var a = state[2];
+		var b = state[3];
+		
 		for( var i=0; i<visited.length; ++i ){
 			var tmp = visited[i];
-			// XXX warning, subtyping on the state only?
-			if( subtypeOf(s,tmp[0]) && equals(p,tmp[1]) && 
-					equals(a,tmp[2]) && equals(b,tmp[3]) )
+// XXX warning, subtyping on the state only?
+			if( subtypeOf(s,tmp[0]) &&
+					equals(p,tmp[1]) && 
+					equals(a,tmp[2]) &&
+					equals(b,tmp[3]) )
 				return true;
 		}
+		
 		return false;
-	}
+	};
+	
+	this.push = function( state ){
+		visited.push( state );
+	};
+	
+};
+
+var conformanceProtocolProtocol = function( s, p, a, b, ast ){
+
+	var max_visited = 100; // safeguard against 'equals' bugs, bounds execution.	
+	var visited = new Visited();
 	
 	// must match 'p', starting with 's', with resulting state 'm'
 	// returns the residual protocol of p
@@ -2148,20 +2167,19 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 	var work = [];
 	work.push( [s,p,a,b] ); // initial configuration
 
-//debugger
 	while( work.length > 0 ){
 		var state = work.pop();
+
+		// already done
+		if( visited.contains( state ) )
+			continue;
+
+		visited.push( state );
 		
 		var _s = state[0];
 		var _p = state[1];
 		var _a = state[2];
 		var _b = state[3];
-		
-		// already done
-		if( contains(_s,_p,_a,_b) )
-			continue;
-
-		visited.push( [_s,_p,_a,_b] );
 
 		// 1. step on _a matched by _p
 		var l = simP( _s, _a, _p );
@@ -2191,25 +2209,15 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 
 	//TODO remember possibility of extending a step.
 
-	return visited;
+	return visited.array;
 };
 
 // XXX how to test this? it should return true/false
 
 var conformanceStateProtocol = function( s, a, b, ast ){
-	var visited = []; // visited configurations
-	var max_visited = 100; // safeguard against 'equals' bugs, bounds execution.
-	
-	// checks if configuration was already visited
-	var contains = function(s,a,b){
-		for( var i=0; i<visited.length; ++i ){
-			var tmp = visited[i];
-			// XXX warning, subtyping on the state only?
-			if( subtypeOf(s,tmp[0]) && equals(a,tmp[1]) && equals(b,tmp[2]) )
-				return true;
-		}
-		return false;
-	}
+
+	var max_visited = 100; // safeguard against 'equals' bugs, bounds execution.	
+	var visited = new Visited();
 	
 	var sim = function(s,p){
 		// unfold recursive types, etc.
@@ -2276,15 +2284,16 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 
 	while( work.length > 0 ){
 		var state = work.pop();
+
+		// already done
+		if( visited.contains( state ) )
+			continue;
+
+		visited.push( state );
+
 		var _s = state[0];
 		var _a = state[1];
 		var _b = state[2];
-		
-		// already done
-		if( contains(_s,_a,_b) )
-			continue;
-
-		visited.push( [_s,_a,_b] );
 		
 		var l = sim(_s,_a);
 		work.push( [l.s,l.p,_b] );
@@ -2297,8 +2306,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 		assert( max_visited-- > 0 || 'ERROR: MAX VISITED', ast);
 	}
 
-	return visited;
-
+	return visited.array;
 };
 
 	var hack_info;
