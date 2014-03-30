@@ -35,6 +35,8 @@ in
 // a polymorphic object allocator function that just takes a function like
 // classBird or classAnimal as argument but is still able to express that the
 // result of applying those classX functions is now depending on some location.
+// Needed a way to have: forall p.( ref p -o A[p] ) but A[p] is not a valid
+// type in our language, just an abbreviation.
 let newBird = fun( _ : [] ).
 	open <t,this> = new {} in
 			this := (classBird[t] this);
