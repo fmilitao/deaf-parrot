@@ -54,8 +54,10 @@ end
 
 /*
 // Study of a possible, simple, encoding of objects in our core language.
-// Attempt at modeling the next Java-like code (simple, without typestates), but
-// including dispatch and inheritance. No internal state, though.
+// Attempt at modeling the following Java-like code.
+// Simple example, without typestates, but including dispatch, "down calls" 
+// (open recursion) and inheritance. 
+// No internal state, no overloading of methods.
 
 class Animal{ 
   String name(){ return "X"; }
