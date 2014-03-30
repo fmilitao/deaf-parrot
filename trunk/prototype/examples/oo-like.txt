@@ -27,18 +27,35 @@ let classBird = <t>fun( this : ref t ).
 
 in
 
+// Constructor for classBird.
+// defining a generic object allocator does not appear to be possible
+// due to the resulting type must be oblivious to the generic type... but
+// the result must depend on the location that was created (such as M[t]).
+// Therefore, some other level of "genericity" would be necessary to have
+// a polymorphic object allocator function that just takes a function like
+// classBird or classAnimal as argument but is still able to express that the
+// result of applying those classX functions is now depending on some location.
+let newBird = fun( _ : [] ).
+	open <t,this> = new {} in
+			this := (classBird[t] this);
+			<t,this :: (M[t])>
+	end
+	in
+
 // client code 
-open <t,this> = new {} in
-	this := ( classBird[t] (this) );
+open <t,this> = newBird {} in
+	!this.name({});
 	!this.toString({}) // "Mr.Bird"
 end
 
 end
 end
+end
 
 /*
-//FIXME: work in progress...
-//Attempt at modeling the following Java-like code (simple, without typestates):
+// Study of a possible, simple, encoding of objects in our core language.
+// Attempt at modeling the next Java-like code (simple, without typestates), but
+// including dispatch and inheritance. No internal state, though.
 
 class Animal{ 
   String name(){ return "X"; }
