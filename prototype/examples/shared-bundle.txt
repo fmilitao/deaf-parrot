@@ -1,0 +1,8 @@
+/*
+ * 	multiple focused state.
+	focus A*B
+	 x:= 1;
+	 y := false;
+	defocus
+	WITH case, such that case analysis helps determine which to focus on.
+ */
