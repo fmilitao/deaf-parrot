@@ -3,8 +3,8 @@ typedef N = Z#[] + NZ#int
 typedef P = NZ#int
 
 // sharing protocols
-typedef IncOnly<p> = rw p N => rw p P; (IncOnly[p])
-typedef Any<p> = rw p N => rw p P ; rw p P => rw p N; (Any[p])
+typedef IncOnly<p> = rw p N => rw p P; IncOnly[p]
+typedef Any<p> = rw p N => rw p P ; rw p P => rw p N; Any[p]
 
 open <v,value> = new Z#{} in
 	share (rw v (Z#[])) as (IncOnly[v]) || (Any[v]);

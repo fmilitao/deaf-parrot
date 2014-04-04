@@ -6,7 +6,7 @@ typedef H<t> = rw t (Held#[])
 typedef F<t> = rw t (Free#int)
 
 // sharing protocol
-typedef Alias<t> = ( (H[t]) => (F[t]) ) (+) ( (F[t]) => none )
+typedef Alias<t> = ( H[t] => F[t] ) (+) ( F[t] => none )
 
 open <t,x> = new Held#{} in
 	share (H[t]) as (Alias[t]) || (Alias[t]);
