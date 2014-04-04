@@ -9,8 +9,8 @@ typedef H<t> = rw t (Held#[])
 typedef F<t> = rw t (Free#int)
 
 // sharing protocols
-typedef Retry<p> = ( (H[p]) => (H[p]) ; (Retry[p]) ) (+) ( (F[p]) => none )
-typedef OneUse<p> = (H[p]) => (F[p])
+typedef Retry<p> = ( H[p] => H[p] ; Retry[p] ) (+) ( F[p] => none )
+typedef OneUse<p> = H[p] => F[p]
 
 // program code
 open <u,meh> = new {} in

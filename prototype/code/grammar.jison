@@ -77,31 +77,31 @@ file : program EOF { return $1; };
 // TYPES
 
 type_root :
-	  type_fun
+	  type_rg
 	| FORALL IDENTIFIER '.' type_root
 		{ $$ = AST.makeForallType($2,$4,@$); }
 	| EXISTS IDENTIFIER '.' type_root
 		{ $$ = AST.makeExistsType($2,$4,@$); }
-//	| REC IDENTIFIER '.' type_root // FIXME: remove this -------------------!!!
-//		{ $$ = AST.makeRecursiveType($2,$4,@$); }
 	| alternative_type // groups all alternatives, easier commutative ops.
 		{ $$ = AST.makeAlternativeType($1,@$); }
-	;
-
-type_fun :
-	  type_rg
-	| type_fun '-o' type_rg
-		{ $$ = AST.makeFunType($1,$3,@$); }
-	| IDENTIFIER '[' type_list ']'
-		{ $$ = AST.makeDefinitionType($1,$3,@$); }
+	| intersection_type // same.
+		{ $$ = AST.makeIntersectionType($1,@$); }
 	;
 
 type_rg :
-	  type_cap
-	| type_cap '=>' type_rg
+	  type_fun
+	| type_fun '=>' type_rg
 		{ $$ = AST.makeRelyType($1,$3,@$); }
-	| type_cap ';' type_rg
+	| type_fun ';' type_rg
 		{ $$ = AST.makeGuaranteeType($1,$3,@$); }
+	;
+
+type_fun :
+	  type_cap
+	| type_fun '-o' type_cap
+		{ $$ = AST.makeFunType($1,$3,@$); }
+	| IDENTIFIER '[' type_list ']'
+		{ $$ = AST.makeDefinitionType($1,$3,@$); }
 	;
 
 type_cap :
@@ -146,6 +146,13 @@ type :
 tagged :
 	IDENTIFIER '#' type
 	 	{ $$ = AST.makeTaggedType($1,$3,@$); }
+	;
+
+intersection_type :
+	  type_fun '&' type_fun
+	  	{ $$ = [$1,$3]; }
+	| intersection_type '&' type_fun
+		{ $$ = $1.concat([$3]); }
 	;
 
 alternative_type :

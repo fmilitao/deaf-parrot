@@ -47,6 +47,7 @@ var AST = new function(){
 		'STACKED_TYPE',
 		'SUM_TYPE',
 		'ALTERNATIVE_TYPE',
+		'INTERSECTION_TYPE',
 		'RECORD_TYPE',
 		'TUPLE_TYPE',
 		'TAGGED_TYPE',
@@ -218,6 +219,9 @@ var AST = new function(){
 	}
 	this.makeStarType = function(types, info){
 		return aux( this.kinds.STAR_TYPE, {types:types}, info);
+	}
+	this.makeIntersectionType = function(types, info){
+		return aux( this.kinds.INTERSECTION_TYPE, {types: types}, info);
 	}
 	this.makeAlternativeType = function(types, info){
 		return aux( this.kinds.ALTERNATIVE_TYPE, {types: types}, info);
