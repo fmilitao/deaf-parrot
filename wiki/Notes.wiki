@@ -1,14 +1,10 @@
-#summary One-sentence summary of this page.
 #labels Featured
+#Notes on the prototype implementation.
 
-= Introduction =
+= Implementation =
 
-Add your content here.
+Focus on both showing typing information, and protocol uses. Due to this, some additional type annotations are required, for instance on alternatives to avoid "retrying" on different alternative. Likewise, the use of (+) and & is mostly targeted to protocols.
 
+== Libraries ==
 
-= Details =
-
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+See [https://code.google.com/p/dead-parrot/wiki/Libraries link].
