@@ -1,3 +1,4 @@
+// sharing and "alias interleaving" example.
 
 import add
 
@@ -9,33 +10,48 @@ typedef F<t> = rw t (Free#int)
 typedef Alias<t> = ( H[t] => F[t] ) (+) ( F[t] => none )
 
 open <t,x> = new Held#{} in
-	share (H[t]) as (Alias[t]) || (Alias[t]);
+
+	// shared 'rw t Held#[]' in two protocols:
+	share H[t] as (Alias[t]) || (Alias[t]);
 	
-	// one alias can move to some other context
-	// for instance, masking the other alias' type
-	open <Unknown,_> =
-		let outside = fun( _ : [] :: (Alias[t])).
-			(<(Alias[t]):U,{}::(Alias[t])>) in
-				outside({})
-		end
-		in
+	// One protocol is assigned to an alias to be
+	// captured by some other context.
+	// For instance, it can hide the alias' type making it
+	// impossible to know its connection to 't'.
+	// unknown context could use its alias 0 or an unbounded number of times.
+	// For brevity, our code uses the protocol/state 0 times.
+	let unknown = fun( _ : [] ).(<(Alias[t]):U,{}::(Alias[t])>) in
 	
-	// so that the relation between locations is
-	// no longer statically known.
-	// manually open alternative:
-	@t (
-		focus (H[t]), (F[t]);
-		case !x of
-			Held#n ->
-				x := Free#42;
-				defocus // returns unit
-		| Free#n ->
-				defocus;
-				x := (add n 1);
-				// ... free to do whatever it pleases
-				delete x;
-				{} // also return unit to safely merge
-		end )
+	// The relation between the locations of the protocols is no 
+	// longer statically known. However, these protocols model all possible
+	// "alias interleaving" that may occur. Therefore, regardless if 'unknown'
+	// is used before or after the protocol we know in this local context,
+	// we can be sure its use will not destructively interfere with our local
+	// assumptions
+	
+	{ // this is a pair, checked sequentially.
+	
+		// uses unknown fisrt:
+		//unknown {},
+		
+		@t ( // manually opens alternative.
+			focus (H[t]), (F[t]);
+			case !x of
+				Held#n ->
+					x := Free#42;
+					defocus // returns unit
+			| Free#n ->
+					defocus;
+					x := (add n 1);
+					// ... free to do whatever it pleases
+					delete x;
+					{} // also returns unit, both branches safely merge.
+			end )
+			
+		// uses unknown last:
+		, unknown {}
+	
+	}
 
 	end
 end
