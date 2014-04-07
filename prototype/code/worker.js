@@ -352,11 +352,11 @@ var _printEnvironment = function(env){
 			var tmp = _printEnvironment(e.$defocus_env).delta;
 			if( tmp.length > 0 ){
 				tmp.sort(); // ...same order
-				tmp = tmp.join(',\n\t\t');
+				tmp = tmp.join(', ');
 			}else{
 				tmp = '&#8709;';
 			}
-			delta.push( toHTML(e.$defocus_guarantee) +' &#9659; '+tmp );
+			delta.push( toHTML(e.$defocus_guarantee) +wq( wQ(' &#9659; ')+wq(tmp) ) );
 			break;
 		}
 		e = e.$parent;
