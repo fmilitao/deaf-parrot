@@ -481,6 +481,7 @@ var _toHTML = function(t){
 		t.type === types.StackedType ||
 		t.type === types.StarType || 
 		t.type === types.AlternativeType ||
+		t.type === types.IntersectionType ||
 		t.type === types.SumType ){
 			return '('+toHTML(t)+')';
 		}
@@ -520,6 +521,13 @@ var toHTML = function (t){
 			for( var i=0; i<inners.length; ++i )
 				res.push( wq( _toHTML( inners[i] ) ) ); 
 			return wq( res.join( wQ(' * ') ) );
+		}
+		case types.IntersectionType:{
+			var inners = t.inner();
+			var res = [];
+			for( var i=0; i<inners.length; ++i )
+				res.push( wq( _toHTML( inners[i] ) ) ); 
+			return wq( res.join( wQ(' &amp; ') ) );
 		}
 		case types.AlternativeType:{
 			var inners = t.inner();

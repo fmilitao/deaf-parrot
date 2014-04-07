@@ -579,6 +579,21 @@ module('Typechecker.Components');
 		var t_rw1 = new t.CapabilityType(new t.LocationVariable('t'),t_int);
 		var t_rw2 = new t.CapabilityType(new t.LocationVariable('t'),t_boolean);
 		equal( subtype(t_rw1,t_rw2), false);
+		
+		// intersection type
+		var t_inter2 = new t.IntersectionType(); // X & Z & Y
+		t_inter2.add(new t.TypeVariable('X'));
+		t_inter2.add(new t.TypeVariable('Z'));
+		t_inter2.add(new t.TypeVariable('Y'));
+		
+		var t_inter1 = new t.IntersectionType(); // X & Z
+		t_inter1.add(new t.TypeVariable('X'));
+		t_inter1.add(new t.TypeVariable('Z'));
+
+		equal( subtype(t_inter2,t_inter1), true);
+		equal( subtype(t_inter1,t_inter2), false);
+		equal( subtype(new t.TypeVariable('X'), t_inter1), false );
+		equal( subtype(t_inter1, new t.TypeVariable('X')), true ); 
 	});
 	
 	test( "Subtyping.Typedef", function() {
