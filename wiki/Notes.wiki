@@ -8,6 +8,8 @@ Focus on both showing typing information, and protocol uses. Due to this, some a
 Notes:
  * Delta^G restrictions on environments still shows the defocus-guarantee (although it is not accessible). Just like framing still shows the types framed, the typing information does not omit the defocus-guarantee inside functions and foralls although they are actually NOT accessible from within (you get a type error). Not very user friendly...
 
+ * To simplify the implementation of the system, since our focus is on RG protocols, the only way to introduce & types is with 'share'.
+
 == Libraries ==
 
 See [https://code.google.com/p/dead-parrot/wiki/Libraries link].
