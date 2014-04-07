@@ -1147,10 +1147,16 @@ var TypeChecker = (function(AST,assertF){
 				a.$caps.push( d_env.$caps[i] );
 			}
 			
+			
+			var tmp = a.$defocus_env;
+			if( tmp !== null ){
+				a.$defocus_guarantee = tmp.$defocus_guarantee;
+				a.$defocus_env = tmp.$defocus_env;
+			}		
+			
 			if( a.$parent !== null ){
 				return merge(a.$parent,d_env.$parent);
 			}
-			
 			return null;
 		}
 		
@@ -1183,7 +1189,6 @@ var TypeChecker = (function(AST,assertF){
 		}
 		
 		this.defocus = function(){
-
 			if( this.$defocus_guarantee === null ){
 				if( this.$parent === null )
 					return undefined;
@@ -1192,9 +1197,10 @@ var TypeChecker = (function(AST,assertF){
 			}
 			
 			// merge environments
+			//var tmp = this.$defocus_env;
 			merge( this, this.$defocus_env );
-			this.$defocus_guarantee = null;
-			this.$defocus_env = null;
+			//this.$defocus_guarantee = tmp.$defocus_guarantee;
+			//this.$defocus_env = tmp.$defocus_env;
 		}
 		
 		// scope methods		
@@ -1262,7 +1268,11 @@ var TypeChecker = (function(AST,assertF){
 			
 			env.$defocus_guarantee = this.$defocus_guarantee;
 			// $defocus_env is immutable so it is safe to alias
-			env.$defocus_env =  this.$defocus_env;
+			//FIXME is NOT immutable
+			if( this.$defocus_env !== null )
+				env.$defocus_env =  this.$defocus_env.clone();
+			else
+				env.$defocus_env =  null;
 			
 			return env;
 		}

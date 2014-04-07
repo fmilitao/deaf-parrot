@@ -1,8 +1,13 @@
 
+typedef A<t> = rw t !int => rw t !int ; A[t]
 
-<q>fun( x : ref q :: (rw q int => rw q boolean ; none ) ).
+<q>fun( x : ref q :: (A[q]) ).
 	(
-	focus (rw q int);
-	x := false;
-	(<X>(defocus)) // this should fail!
+	focus (rw q !int);
+	open <t,n> = new 0 in
+		share (rw t !int) as (A[t]) || (A[t]);
+		focus (rw t !int);
+		defocus;
+		defocus
+	end
 	)

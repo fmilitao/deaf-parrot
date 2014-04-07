@@ -47,7 +47,6 @@ TODO:
 TYPECHECKER, missing features: 
 
  - isEquals on environments must be cleaned
- 	Equals and subtypeOf functions must be cleaned they are messy... and buggy?
 
  - join multiple typing environments with (+)
 
@@ -127,5 +126,5 @@ CODE STYLE:
 	- convention: "fake" protected/private fields using $NAME
 
 ALL CODE SHOULD INCLUDE COMMENT AT TOP:
-// Copyright (C) 2013 Filipe Militao <filipe.militao@cs.cmu.edu>
+// Copyright (C) 2013-2014 Filipe Militao <filipe.militao@cs.cmu.edu>
 // GPL v3 Licensed http://www.gnu.org/licenses/
