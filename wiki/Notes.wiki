@@ -5,6 +5,9 @@
 
 Focus on both showing typing information, and protocol uses. Due to this, some additional type annotations are required, for instance on alternatives to avoid "retrying" on different alternative. Likewise, the use of (+) and & is mostly targeted to protocols.
 
+Notes:
+ * Delta^G restrictions on environments still shows the defocus-guarantee (although it is not accessible). Just like framing still shows the types framed, the typing information does not omit the defocus-guarantee inside functions and foralls although they are actually NOT accessible from within (you get a type error). Not very user friendly...
+
 == Libraries ==
 
 See [https://code.google.com/p/dead-parrot/wiki/Libraries link].
