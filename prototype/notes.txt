@@ -45,10 +45,6 @@ TODO:
 ========================================
 
 TYPECHECKER, missing features: 
- - Missing Delta^G restrictions on environments.
- ensure no access to enclosing defocus-guarantee of environment inside 
- functions and foralls
-	Ensure no defocus guarantee on functions and forall abstraction
 
  - isEquals on environments must be cleaned
  	Equals and subtypeOf functions must be cleaned they are messy... and buggy?

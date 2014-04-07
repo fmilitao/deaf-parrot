@@ -1,4 +1,5 @@
-
+//OK Function Value
+//FAIL No pending defocus-guarantee
 
 <q>fun( x : ref q :: (rw q int => rw q boolean ; none ) ).
 	(

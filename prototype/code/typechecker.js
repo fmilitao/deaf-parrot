@@ -1064,9 +1064,11 @@ var TypeChecker = (function(AST,assertF){
 	// All methods return:
 	// 	undefined - new element collides with a previously existing one;
 	//  null/value - if all OK.
-	var Environment = function(parent){
+	var Environment = function(parent,defocus_up){
 		// note that set only works at the local level (i.e. it will never
 		// attempt to set something in an upper-level).
+		if( defocus_up === undefined )
+			defocus_up = true; //FIXME how does this work with merge?
 
 		// CAREFUL: '$' and '#' cannot be source-level identifiers
 		var TYPE_INDEX='$';
@@ -1172,7 +1174,12 @@ var TypeChecker = (function(AST,assertF){
 				return this.$defocus_guarantee;
 			if( this.$parent === null )
 				return undefined;
-			return this.$parent.defocus_guarantee();
+			
+			// if can go upwards
+			if( defocus_up )
+				return this.$parent.defocus_guarantee();
+			
+			return undefined;
 		}
 		
 		this.defocus = function(){
@@ -1191,8 +1198,8 @@ var TypeChecker = (function(AST,assertF){
 		}
 		
 		// scope methods		
-		this.newScope = function(){
-			return new Environment(this);
+		this.newScope = function(dg_up){
+			return new Environment(this,dg_up);
 		}
 		this.endScope = function(){
 			return this.$parent;
@@ -3141,7 +3148,8 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 				else
 					variable = new LocationVariable(id);
 
-				var e = env.newScope();
+				// ensure that parent's defocus is not reachable
+				var e = env.newScope(false);
 				assert( e.setType( id, variable ) ||
 					("Type '" + id + "' already in scope"), ast );
 
@@ -3153,7 +3161,8 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 				var id = ast.parms.id;
 				var result = null;
 				var initial_size = env.size();
-				var e = env.newScope();
+				// ensure that parent's defocus is not reachable
+				var e = env.newScope(false);
 				var arg_type;
 				
 				// CAREFUL: only if it is a recursive function
