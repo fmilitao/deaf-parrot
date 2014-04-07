@@ -1,0 +1,9 @@
+//OK Function Value
+//FAIL No pending defocus-guarantee
+
+<q>fun( x : ref q :: (rw q int => rw q boolean ; none ) ).
+	(
+	focus (rw q int);
+	x := false;
+	(fun( y : !int ).(defocus)) // this should fail!
+	)
