@@ -1,27 +1,27 @@
 //FIXME: work in progress
 
 typedef Nil   <p> = rw p (Nil#[])
-typedef NilP  <p> = (Nil[p]) => (Nil[p]) ; (NilP[p])
-typedef Node  <p> = rw p (Node#[int,exists q.( ref q :: ((NilP[q]) (+) (NodeP[q])) )])
-typedef NodeP <p> = (Node[p]) => (Node[p]); (NodeP[p]) 
+typedef NilP  <p> = Nil[p] => Nil[p] ; NilP[p]
+typedef Node  <p> = rw p (Node#[int,exists q.( ref q :: ( NilP[q] (+) NodeP[q] ) )])
+typedef NodeP <p> = Node[p] => Node[p] ; NodeP[p]
 
 let newSpaghetti = fun( _ : [] ).
  // the following is a private function that is not visible to clients
- let make = fun( up : exists q.(ref q :: ((NodeP[q]) (+) (NilP[q]))) ).
+ let make = fun( up : exists q.(ref q :: ( NodeP[q] (+) NilP[q] )) ).
  // FIXME: needs to be recursive function
  // FIXME: needs to pack types to be prettier
   open<h,head> = new up in
    {
 
-    push = fun( i : int :: rw h (exists q.(ref q :: ((NodeP[q]) (+) (NilP[q])))) ).
+    push = fun( i : int :: rw h (exists q.(ref q :: ( NodeP[q] (+) NilP[q] ))) ).
 		open <t,n> = new Node#{i,!head} in
 			// it is always possible to share a node alone
-			share (Node[t]) as (NodeP[t]) || none;
+			share Node[t] as (NodeP[t]) || none;
 			// restores same head type as in argument
-			head := < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) >
+			head := < t, n :: ( NodeP[t] (+) NilP[t] ) >
 		end,
 
-    pop = fun( _ : [] :: rw h (exists q.(ref q :: ((NodeP[q]) (+) (NilP[q])) )) ).
+    pop = fun( _ : [] :: rw h (exists q.(ref q :: ( NodeP[q] (+) NilP[q] ) )) ).
 		open <t,n> = !head in
 			@t (
 			focus (Node[t]), (Nil[t]);
@@ -29,7 +29,7 @@ let newSpaghetti = fun( _ : [] ).
 				Nil#x ->
 					n := Nil#x;
 					defocus;
-					head := < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) > ;
+					head := < t, n :: ( NodeP[t] (+) NilP[t] ) > ;
 					End#{}
 			| Node#n ->
 					let [e,m] = n in
@@ -42,15 +42,15 @@ let newSpaghetti = fun( _ : [] ).
 							nn := Node#x;
 							defocus;
 							share (NodeP[tt]) as (NodeP[tt]) || (NodeP[tt]);
-							head := <tt,nn :: ( (NodeP[tt]) (+) (NilP[tt]) )>
+							head := <tt,nn :: ( NodeP[tt] (+) NilP[tt] )>
 						| Nil#y ->
 							nn := Nil#y;
 							defocus;
 //FIXME: bug when defocusing nested focus blocks.
 							share (NilP[tt]) as (NilP[tt]) || (NilP[tt]);
-							head := < tt, nn :: ( (NodeP[tt]) (+) (NilP[tt]) ) >
+							head := < tt, nn :: ( NodeP[tt] (+) NilP[tt] ) >
 						end;
-						n := Node#{e,< tt, nn :: ( (NodeP[tt]) (+) (NilP[tt]) ) >};
+						n := Node#{e,< tt, nn :: ( NodeP[tt] (+) NilP[tt] ) >};
 						defocus )
 					end;
 					Result#e

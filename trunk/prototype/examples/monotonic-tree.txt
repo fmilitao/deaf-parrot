@@ -5,13 +5,13 @@ typedef Raw   <q> = rw q (Raw#(exists l.exists r.( [ref l,ref r] :: ( (RawP[l]) 
 typedef Ready <q> = rw q (Ready#(exists l.exists r.( [int,ref l,ref r] :: ( (ReadyP[l]) * (ReadyP[r]) ) )))
 
 // steps
-typedef ReadyS <q> = (Ready[q]) => (Ready[q]) ; (ReadyS[q])
-typedef RawS   <q> = (Raw[q]) => (Ready[q]) ; (ReadyS[q])
-typedef NilS   <q> = (Nil[q]) => (Nil[q]); (NilS[q])
+typedef ReadyS <q> = Ready[q] => Ready[q] ; ReadyS[q]
+typedef RawS   <q> = Raw[q] => Ready[q] ; ReadyS[q]
+typedef NilS   <q> = Nil[q] => Nil[q]; NilS[q]
 
 // protocols
-typedef ReadyP <q> = (NilS[q]) (+) (ReadyS[q])
-typedef RawP   <q> = (NilS[q]) (+) (ReadyS[q]) (+) (RawS[q])
+typedef ReadyP <q> = NilS[q] (+) ReadyS[q]
+typedef RawP   <q> = NilS[q] (+) ReadyS[q] (+) RawS[q]
 
 // monotonic node initialization
 fun Init<q>( v : int , n : ref q :: (RawP[q]) ) : [] :: (ReadyP[q]).

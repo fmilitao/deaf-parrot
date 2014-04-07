@@ -12,8 +12,8 @@ typedef Stack = forall T.( [] -o ( exists E.exists NE.
 		isEmpty : [] :: ( E (+) NE ) -o  Empty#([]::E) + NonEmpty#([]::NE),
 		del : [] :: E -o [] ] :: E ) )
 	
-typedef Q<NE> = ( NE => NE ; (Q[NE]) )
-typedef P<NE,E> = ( NE (+) E ) => NE ; (Q[NE]) 
+typedef Q<NE> = NE => NE ; Q[NE]
+typedef P<NE,E> = ( NE (+) E ) => NE ; Q[NE] 
 
 fun( newStack : Stack ).
 	let s1 = (newStack[int]) {} in
