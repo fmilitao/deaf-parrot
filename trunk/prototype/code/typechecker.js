@@ -117,6 +117,17 @@ var TypeChecker = (function(AST,assertF){
 		}
 	);
 	
+	var IntersectionType = newType('IntersectionType',
+		function IntersectionType() {
+			var alts = [];
+			this.add = function( inner ){
+				alts.push(inner);
+				return true;
+			}
+			this.inner = function(){ return alts; }
+		}
+	);
+	
 	var ForallType = newType('ForallType',
 		function ForallType( id, inner ) {
 			this.id = function(){ return id; }
@@ -307,6 +318,14 @@ var TypeChecker = (function(AST,assertF){
 			return res.join(' (+) ');
 		} );
 		
+		_add( types.IntersectionType, function(){
+			var inners = this.inner();
+			var res = [];
+			for( var i=0; i<inners.length; ++i )
+				res.push( _wrap( inners[i] ) ); 
+			return res.join(' & ');
+		} );
+		
 		_add( types.ExistsType, function(){
 			return 'exists '+this.id().name()+'.'+_wrap( this.inner() );
 		} );
@@ -437,6 +456,7 @@ var TypeChecker = (function(AST,assertF){
 					return false;
 			return true;
 		});
+		_add( types.IntersectionType, _visitor[types.AlternativeType] );
 		_add( types.StarType, _visitor[types.AlternativeType] ); //reuse def.
 		
 		_add( types.TupleType, function(t,loc){
@@ -518,6 +538,14 @@ var TypeChecker = (function(AST,assertF){
 		}
 		case types.AlternativeType:{
 			var star = new AlternativeType();
+			var inners = t.inner();
+			for( var i=0;i<inners.length;++i ){
+				star.add( rec(inners[i]) ); 
+			}	
+			return star;
+		}
+		case types.IntersectionType:{
+			var star = new IntersectionType();
 			var inners = t.inner();
 			for( var i=0;i<inners.length;++i ){
 				star.add( rec(inners[i]) ); 
@@ -754,6 +782,7 @@ var TypeChecker = (function(AST,assertF){
 			}
 			case types.PrimitiveType:
 				return t1.name() === t2.name();
+			case types.IntersectionType:
 			case types.AlternativeType:
 			case types.StarType:{
 				var i1s = t1.inner();
@@ -827,8 +856,7 @@ var TypeChecker = (function(AST,assertF){
 	 * @param {Type} t2
 	 * @return {Boolean} true if t1 <: t2 (if t1 can be used as t2).
 	 */
-	var subtypeOf = function( t1 , t2 ){
-	
+	var subtypeOf = function( t1 , t2 ){	
 		if( t1 === t2 || equals(t1,t2) ) // A <: A
 			return true;
 		
@@ -872,6 +900,17 @@ var TypeChecker = (function(AST,assertF){
 			var i2s = t2.inner();
 			for(var j=0;j<i2s.length;++j) {
 				if( subtypeOf(t1,i2s[j]) ){
+					return true;
+				}
+			}
+			return false;
+		}
+		
+		if( t1.type === types.IntersectionType && t2.type !== types.IntersectionType ){
+			// one of t1s alts is t2
+			var i1s = t1.inner();
+			for(var j=0;j<i1s.length;++j) {
+				if( subtypeOf(i1s[j],t2) ){
 					return true;
 				}
 			}
@@ -938,6 +977,34 @@ var TypeChecker = (function(AST,assertF){
 			case types.AlternativeType:{
 				var i1s = t1.inner();
 				var i2s = t2.inner();
+				
+				// more alternatives in t1
+				if( i1s.length > i2s.length )
+					return false;
+					
+				// any order will do, but must ensure all of t1 is inside t2
+				var tmp_i2s = i2s.slice(0); // copies array
+				for(var i=0;i<i1s.length;++i){
+					var curr = i1s[i];
+					var found = false;
+					for(var j=0;j<tmp_i2s.length;++j){
+						var tmp = tmp_i2s[j];
+						if( subtypeOf(curr,tmp) ){
+							tmp_i2s.splice(j,1); // removes element
+							found = true;
+							break; // continue to next
+						}
+					}
+					if( !found )
+						return false;
+				}
+				return true;
+			}
+			//opposite of alternative type
+			case types.IntersectionType:{
+				// note intentionally inverts order, rest copy pasted from above.
+				var i1s = t2.inner();
+				var i2s = t1.inner();
 				
 				// more alternatives in t1
 				if( i1s.length > i2s.length )
@@ -1124,11 +1191,13 @@ var TypeChecker = (function(AST,assertF){
 				split(a.$parent,d_env.$parent);
 				
 				// nest defocus guarantees, if they exist
+//XXX why just on parents???
 				d_env.$parent.$defocus_guarantee = a.$parent.$defocus_guarantee;
 				d_env.$parent.$defocus_env = a.$parent.$defocus_env;
 				
 				a.$parent.$defocus_guarantee = null;
 				a.$parent.$defocus_env = null;
+
 			}
 			
 			return null;
@@ -1146,7 +1215,6 @@ var TypeChecker = (function(AST,assertF){
 			for( var i=0; i<d_env.$caps.length;++i ){
 				a.$caps.push( d_env.$caps[i] );
 			}
-			
 			
 			var tmp = a.$defocus_env;
 			if( tmp !== null ){
@@ -1175,6 +1243,7 @@ var TypeChecker = (function(AST,assertF){
 			return true; //signals OK
 		}
 		
+		// finds closest defocus_guarantee (without the environment)
 		this.defocus_guarantee = function(){
 			if( this.$defocus_guarantee !== null )
 				return this.$defocus_guarantee;
@@ -1195,7 +1264,7 @@ var TypeChecker = (function(AST,assertF){
 				// search upwards...
 				return this.$parent.defocus();
 			}
-			
+//debugger
 			// merge environments
 			//var tmp = this.$defocus_env;
 			merge( this, this.$defocus_env );
@@ -1687,6 +1756,7 @@ var TypeChecker = (function(AST,assertF){
 	var unstackType = function(t, d, ast){
 		switch( t.type ){
 		case types.AlternativeType:
+		case types.IntersectionType:
 		case types.RelyType:
 		case types.CapabilityType:
 		case types.TypeVariable:
@@ -2051,7 +2121,7 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 						('[Protocol Conformance]: '+s+' not <: '+m) );
 			return p;
 		}
-		
+//FIXME missing intersection type support		
 		// now state
 		if( s.type === types.AlternativeType ){
 			var tmp_s = null;
@@ -2603,6 +2673,15 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 							"Duplicated tag: "+tag, ast.sums[i]);
 				}
 				return sum;
+			};
+			
+			case AST.kinds.INTERSECTION_TYPE: 
+			return function( ast, env ){
+				var alt = new IntersectionType();
+				for( var i=0; i<ast.types.length; ++i ){
+					alt.add( check( ast.types[i], env ) );
+				}
+				return alt;
 			};
 			
 			case AST.kinds.ALTERNATIVE_TYPE: 
