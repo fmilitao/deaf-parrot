@@ -23,59 +23,62 @@ let newSpaghetti = fun( _ : [] ).
 
     pop = fun( _ : [] :: rw h (exists q.(ref q :: ( NodeP[q] (+) NilP[q] ) )) ).
 		open <t,n> = !head in
-			@t (
-			focus (Node[t]), (Nil[t]);
-			case !n of
-				Nil#x ->
-					n := Nil#x;
-					defocus;
-					head := < t, n :: ( NodeP[t] (+) NilP[t] ) > ;
-					End#{}
-			| Node#n ->
-					let [e,m] = n in
-					// following open is necessary only to disambiguate what is shared
-					open <tt,nn> = m in
-						@tt (
-						focus (Node[tt]), (Nil[tt]);
-						case !nn of
-						Node#x ->
-							nn := Node#x;
-							defocus;
-							share (NodeP[tt]) as (NodeP[tt]) || (NodeP[tt]);
-							head := <tt,nn :: ( NodeP[tt] (+) NilP[tt] )>
-						| Nil#y ->
-							nn := Nil#y;
-							defocus;
-//FIXME: bug when defocusing nested focus blocks.
-							share (NilP[tt]) as (NilP[tt]) || (NilP[tt]);
-							head := < tt, nn :: ( NodeP[tt] (+) NilP[tt] ) >
+			use t in
+				focus (Node[t]), (Nil[t]);
+				case !n of
+					Nil#x ->
+						n := Nil#x;
+						defocus;
+						head := < t, n :: ( NodeP[t] (+) NilP[t] ) > ;
+						End#{}
+				| Node#n ->
+						let [e,m] = n in
+						// following open is necessary only to disambiguate what is shared
+						open <tt,nn> = m in
+							use tt in
+								focus (Node[tt]), (Nil[tt]);
+								case !nn of
+								Node#x ->
+									nn := Node#x;
+									defocus;
+									share (NodeP[tt]) as (NodeP[tt]) || (NodeP[tt]);
+									head := <tt,nn :: ( NodeP[tt] (+) NilP[tt] )>
+								| Nil#y ->
+									nn := Nil#y;
+									defocus;
+		//FIXME: bug when defocusing nested focus blocks.
+									share (NilP[tt]) as (NilP[tt]) || (NilP[tt]);
+									head := < tt, nn :: ( NodeP[tt] (+) NilP[tt] ) >
+								end;
+								n := Node#{e,< tt, nn :: ( NodeP[tt] (+) NilP[tt] ) >};
+								defocus
+							end
 						end;
-						n := Node#{e,< tt, nn :: ( NodeP[tt] (+) NilP[tt] ) >};
-						defocus )
-					end;
-					Result#e
-					end
-			end )
+						Result#e
+						end
+				end
+			end
 		end,
 		
 	clone = fun( _ : [] :: rw h ( exists q.( ref q :: ((NodeP[q]) (+) (NilP[q])) ) ) ).
 		open <t,n> = !head in
-			@t (
-			focus (Node[t]), (Nil[t]);
-			case !n of
-				Node#x ->
-					n := Node#x;
-					defocus;
-					share (NodeP[t]) as (NodeP[t]) || (NodeP[t]);
-					make < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) >;
-					head := < t, n :: ( (NodeP[t]) (+) (NilP[t]) )>
-			| Nil#y ->
-					n := Nil#y;
-					defocus;
-					share (NilP[t]) as (NilP[t]) || (NilP[t]);
-					make < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) >;
-					head := < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) >
-			end )
+			use t in
+				focus (Node[t]), (Nil[t]);
+				case !n of
+					Node#x ->
+						n := Node#x;
+						defocus;
+						share (NodeP[t]) as (NodeP[t]) || (NodeP[t]);
+						make < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) >;
+						head := < t, n :: ( (NodeP[t]) (+) (NilP[t]) )>
+				| Nil#y ->
+						n := Nil#y;
+						defocus;
+						share (NilP[t]) as (NilP[t]) || (NilP[t]);
+						make < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) >;
+						head := < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) >
+				end
+			end
 		end
 
 	}

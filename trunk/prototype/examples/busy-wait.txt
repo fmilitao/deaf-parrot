@@ -21,21 +21,22 @@ open <t,x> = new Held#{} in
 	meh := <(OneUse[t]):What,{}::(OneUse[t])>;
 	
 	fun Y( _ : []::(Retry[t]) ):int.(
-		@t (
-		focus (H[t]),(F[t]);
-		case !x of
-			Held#n ->
-				x := Held#n;
-				defocus; // retry, did not consume shared type!
-				Y {}// recursion point
-		|	Free#n -> // recovers
-				defocus;
-				x := (add n 1);
-				// ...
-				x := (add !x 1);
-				//...
-				delete x
-		end)
+		use t in
+			focus (H[t]),(F[t]);
+			case !x of
+				Held#n ->
+					x := Held#n;
+					defocus; // retry, did not consume shared type!
+					Y {}// recursion point
+			|	Free#n -> // recovers
+					defocus;
+					x := (add n 1);
+					// ...
+					x := (add !x 1);
+					//...
+					delete x
+			end
+		end
 	) {};
 	
 	delete meh

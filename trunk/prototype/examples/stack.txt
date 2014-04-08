@@ -18,13 +18,14 @@ let newStack = <T>fun( _ : [] ).
 		{
 		
 			push = fun( e : T :: ( EMPT[h] (+) ELEM[T,h] ) ).
-				@h // open alternative for location 'h'
-				// by reading the contents of head, it will require
-				// to break down the alternative into its sub-cases 
-				open <n,next> = new !head in
-					// but we can always stack with more alternatives
-					// than we have, since that just weakens the type
-					head := N#{ e , <n,next::(EMPT[n] (+) ELEM[T,n])> }
+				use h in // open alternative for location 'h'
+					// by reading the contents of head, it will require
+					// to break down the alternative into its sub-cases 
+					open <n,next> = new !head in
+						// but we can always stack with more alternatives
+						// than we have, since that just weakens the type
+						head := N#{ e , <n,next::(EMPT[n] (+) ELEM[T,n])> }
+					end
 				end,
 
 			pop = fun( _ : [] :: ( ELEM[T,h] ) ).
@@ -32,23 +33,25 @@ let newStack = <T>fun( _ : [] ).
 					N#a ->
 						let [e,n] = a in
 							open <t,ptr> = n in
-								@t (
-								head := !ptr;
-								delete ptr );
+								use t in
+									head := !ptr;
+									delete ptr
+								end;
 								e
 							end
 						end
 				end,
 			
 			isEmpty = fun( _ : [] :: ( EMPT[h] (+) ELEM[T,h] ) ).
-				@h // opens alternative
-				case !head of
-					E#v ->
-						head := E#v;
-						Empty#({}::(EMPT[h]))
-				|	N#n ->
-						head := N#n;
-						NonEmpty#({}::(ELEM[T,h]))
+				use h in // opens alternative
+					case !head of
+						E#v ->
+							head := E#v;
+							Empty#({}::(EMPT[h]))
+					|	N#n ->
+							head := N#n;
+							NonEmpty#({}::(ELEM[T,h]))
+					end
 				end,
 				
 			del = fun( _ : [] :: (EMPT[h]) ).

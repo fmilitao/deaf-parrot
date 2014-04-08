@@ -311,7 +311,7 @@ var Interpreter = (function( AST, assertF ){
 			case AST.kinds.PACK:
 			case AST.kinds.FORALL:
 			case AST.kinds.TYPE_APP:
-			case AST.kinds.ALTERNATIVE_OPEN:
+			case AST.kinds.USE:
 				return function(ast,env){
 					return run(ast.exp, env);
 				};

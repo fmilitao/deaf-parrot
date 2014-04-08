@@ -30,7 +30,7 @@
 "typedef"             return 'TYPEDEF'
 "import"              return 'IMPORT'
 "none"                return 'NONE'
-"@"                   return '@'
+"use"                 return 'USE'
 "(+)"                 return '(+)'
 "&"                   return '&'
 "||"                  return '||'
@@ -278,8 +278,6 @@ nonsequence :
 
 expression :
 	  value
-	| '@' type expression
-		{ $$ = AST.makeAlternativeOpen($2,$3,@$); }
 	| "!" expression
 		{ $$ = AST.makeDeRef($2,@$); }
 	| NEW expression
@@ -292,6 +290,8 @@ expression :
 		{ $$ = AST.makePack($2,$4,$6,@$); }
 	| DELETE expression
 		{ $$ = AST.makeDelete($2,@$); }
+	| USE type_root IN sequence END
+		{ $$ = AST.makeUse($2,$4,@$); }
 	| LET IDENTIFIER '=' sequence IN sequence END
 		{ $$ = AST.makeLet($2,$4,$6,@$); }
 	| LET '[' ids_list ']' '=' sequence IN sequence END
