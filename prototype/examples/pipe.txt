@@ -45,28 +45,29 @@ let newPipe = fun( _ : [] ).
 
 		tryTake = fun( _ : [] :: rw h (exists p.(!ref p :: (H[p]) )) ).
 			open <f,first> = !head in
-				@f
-				(focus f;
-				case !first of
-						Empty#_ -> // still empty, no need to change anything
-							first := Empty#{};
-							defocus;
-							head := <f,first :: (H[f])>; // reassign (content was/is linear type)
-							NoResult#({}::rw h (exists p.(!ref p :: (H[p]))))
-				|		Closed#_ -> // end of pipe, pipe closed
-							delete first;
-							delete head;
-							defocus;
-							Depleted#{}
-				|		Node#n ->
-							delete first;
-							defocus; // defocus moved just to reduce elements in delta,
-								// could be further below
-							let [element, next] = n in
-								head := next; // 'next' is a packed type
-								Result#(element :: rw h (exists p.(!ref p :: (H[p]))) )
-							end
-				end)
+				use f in
+					focus f;
+					case !first of
+							Empty#_ -> // still empty, no need to change anything
+								first := Empty#{};
+								defocus;
+								head := <f,first :: (H[f])>; // reassign (content was/is linear type)
+								NoResult#({}::rw h (exists p.(!ref p :: (H[p]))))
+					|		Closed#_ -> // end of pipe, pipe closed
+								delete first;
+								delete head;
+								defocus;
+								Depleted#{}
+					|		Node#n ->
+								delete first;
+								defocus; // defocus moved just to reduce elements in delta,
+									// could be further below
+								let [element, next] = n in
+									head := next; // 'next' is a packed type
+									Result#(element :: rw h (exists p.(!ref p :: (H[p]))) )
+								end
+					end
+				end
 			end
 		}::( (rw h (exists p.(!ref p :: (H[p])))) * (rw t (exists p.(!ref p :: (T[p])))) )
 		>>

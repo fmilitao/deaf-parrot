@@ -34,7 +34,7 @@ open <t,x> = new Held#{} in
 		// uses unknown fisrt:
 		//unknown {},
 		
-		@t ( // manually opens alternative.
+		use t in // manually opens alternative.
 			focus (H[t]), (F[t]);
 			case !x of
 				Held#n ->
@@ -46,7 +46,8 @@ open <t,x> = new Held#{} in
 					// ... free to do whatever it pleases
 					delete x;
 					{} // also returns unit, both branches safely merge.
-			end )
+			end
+		end
 			
 		// uses unknown last:
 		, unknown {}

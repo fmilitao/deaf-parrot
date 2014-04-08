@@ -56,9 +56,8 @@ var AST = new function(){
 		'STAR_TYPE',
 		'PRIMITIVE_TYPE',
 		'NONE_TYPE',
-//		'RECURSIVE_TYPE',
 		'DEFINITION_TYPE',
-		'ALTERNATIVE_OPEN',
+		'USE',
 		'FORALL',
 		'PACK',
 		'OPEN',
@@ -177,8 +176,8 @@ var AST = new function(){
 	this.makeOpen = function(type,id,val,exp, info){
 		return aux( this.kinds.OPEN, {type: type, id: id, val: val, exp: exp}, info);
 	}
-	this.makeAlternativeOpen = function(type,exp, info){
-		return aux( this.kinds.ALTERNATIVE_OPEN, {type: type, exp: exp}, info);
+	this.makeUse = function(type,exp, info){
+		return aux( this.kinds.USE, {type: type, exp: exp}, info);
 	}
 	this.makeTypeApp = function(exp,type,info){
 		return aux( this.kinds.TYPE_APP, {exp: exp, id: type}, info);

@@ -1239,8 +1239,8 @@ var TypeChecker = (function(AST,assertF){
 			split( this, tmp );
 			
 			// append the focused cap
-			this.setCap( t.rely() );
-			return true; //signals OK
+			return t.rely();
+			//return true; //signals OK
 		}
 		
 		// finds closest defocus_guarantee (without the environment)
@@ -2616,17 +2616,17 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 				return new ExistsType(variable,exp);
 			}
 			
-			case AST.kinds.ALTERNATIVE_OPEN: 
+			case AST.kinds.USE: 
 			return function( ast, env ){
 				var type = check(ast.type, env);
-				assert( type.type === types.LocationVariable ||
-					('Cannot alt-open '+type), ast.type );
 				
-				// Note: it's important that it is just a (location) name to
-				// ensure it can work on multiple alternative cases. Thus, using
-				// for instance, just 't' will work on multiple branches where 't'
-				// may exist.
-				var cap = env.removeNamedCap( type.name() );
+				var cap = undefined;
+				if( type.type === types.LocationVariable ){
+					cap = env.removeNamedCap( type.name() );
+				}else{
+					cap = env.removeCap(
+						function(c){ return subtypeOf(c,type); } );
+				}
 				
 				assert( cap !== undefined || ('Missing cap: '+cap), ast.type );
 					
@@ -3033,7 +3033,8 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 					if( cap === undefined )
 						continue;
 				
-					env.focus( cap );	
+					var tmp = env.focus( cap );
+					unstackType( tmp, env, ast );
 					return new BangType(new RecordType());
 				}
 				

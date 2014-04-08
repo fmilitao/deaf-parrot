@@ -15,23 +15,24 @@ typedef RawP   <q> = NilS[q] (+) ReadyS[q] (+) RawS[q]
 
 // monotonic node initialization
 fun Init<q>( v : int , n : ref q :: (RawP[q]) ) : [] :: (ReadyP[q]).
-	@q (
-	focus (Raw[q]), (Ready[q]), (Nil[q]);
-	case !n of
-		Nil#_ -> // empty node
-			n := Nil#_
-	|	Ready#x -> // node was already initialized.
-			// restore linear content to cell
-			n := Ready#x
-	| Raw#x -> // un-initialize node
-		open <l,y> = x in
-		open <r,pair> = y in
-		let [left,right] = pair in
-			// initialize children:
-			Init[l] v left;
-			Init[r] v right;
-			// done
-			n := Ready#<l,<r,{v,left,right}::( (ReadyP[l]) * (ReadyP[r]) )>>
-		end end end
-	end;
-	defocus )
+	use q in
+		focus (Raw[q]), (Ready[q]), (Nil[q]);
+		case !n of
+			Nil#_ -> // empty node
+				n := Nil#_
+		|	Ready#x -> // node was already initialized.
+				// restore linear content to cell
+				n := Ready#x
+		| Raw#x -> // un-initialize node
+			open <l,y> = x in
+			open <r,pair> = y in
+			let [left,right] = pair in
+				// initialize children:
+				Init[l] v left;
+				Init[r] v right;
+				// done
+				n := Ready#<l,<r,{v,left,right}::( (ReadyP[l]) * (ReadyP[r]) )>>
+			end end end
+		end;
+		defocus
+	end

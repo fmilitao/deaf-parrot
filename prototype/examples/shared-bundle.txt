@@ -1,8 +1,24 @@
-/*
- * 	multiple focused state.
-	focus A*B
-	 x:= 1;
-	 y := false;
-	defocus
-	WITH case, such that case analysis helps determine which to focus on.
- */
+// Example of multiple shared/focused state that is bundled together.
+// note how testing of cap for 't' conditions what we must do on 'q' in order
+// to safely defocus that shared state.
+
+typedef S<q,t> = ( (rw q int) * (rw t !(ToString#[]) ) => ( (rw q string) * (rw t !(ToString#[])) ) ) 
+typedef B<q,t> = ( (rw q int) * (rw t !(ToBool#[]) ) => ( (rw q boolean) * (rw t !(ToBool#[])) ) )
+
+typedef P<q,t> = S[q,t] (+) B[q,t]
+
+typedef FS<q,t> = ( (rw q int) * (rw t !(ToString#[]) ) )
+typedef FB<q,t> = ( (rw q int) * (rw t !(ToBool#[]) ) )
+	
+<q><t>fun( x : ref q , y : ref t :: (P[q,t]) ).
+	use P[q,t] in
+		focus (FS[q,t]),(FB[q,t]);
+		case !y of
+			ToString#_ ->
+				x := "ok";
+				defocus
+		|	ToBool#_ ->
+				x := true;
+				defocus
+		end
+	end
