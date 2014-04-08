@@ -2630,36 +2630,39 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 				
 				assert( cap !== undefined || ('Missing cap: '+cap), ast.type );
 					
-				assert( cap.type === types.AlternativeType ||
-					('Not AlternativeType '+cap), ast.type );
-				
-				var alts = cap.inner();
-				var env_start = env.clone();
-				var end_env = null;
-				var result = null;
-				for( var i=0; i<alts.length; ++i ){
-					var tmp_env = end_env === null ? env : env_start.clone();
-					var alternative = alts[i];
-					alternative = unAll(alternative, false, true);
-					unstackType( alternative, tmp_env, ast.type );
-
-					var res = check( ast.exp, tmp_env );
-					if( result === null )
-						result = res;
-					else {
-						// attempt to merge results
-						var tmp = mergeType( result, res );
-						assert( tmp !== undefined || ('Incompatible alternative results: '+
-							result+' vs '+res), ast);
-						result = tmp;
+				if( cap.type === types.AlternativeType ){
+					var alts = cap.inner();
+					var env_start = env.clone();
+					var end_env = null;
+					var result = null;
+					for( var i=0; i<alts.length; ++i ){
+						var tmp_env = end_env === null ? env : env_start.clone();
+						var alternative = alts[i];
+						alternative = unAll(alternative, false, true);
+						unstackType( alternative, tmp_env, ast.type );
+	
+						var res = check( ast.exp, tmp_env );
+						if( result === null )
+							result = res;
+						else {
+							// attempt to merge results
+							var tmp = mergeType( result, res );
+							assert( tmp !== undefined || ('Incompatible alternative results: '+
+								result+' vs '+res), ast);
+							result = tmp;
+						}
+						
+						if( end_env === null )
+							end_env = tmp_env;
+						else{
+							assert( end_env.isEqual( tmp_env ) ||
+								"Incompatible effects on alternatives", ast.exp);
+						}
 					}
-					
-					if( end_env === null )
-						end_env = tmp_env;
-					else{
-						assert( end_env.isEqual( tmp_env ) ||
-							"Incompatible effects on alternatives", ast.exp);
-					}
+				}else{
+					// this is meant to be useful for & types
+					env.setCap( type );
+					return check( ast.exp, env );
 				}
 				return result;
 			};

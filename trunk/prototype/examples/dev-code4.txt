@@ -1,4 +1,6 @@
 
 
 <A><B>fun( x : int :: ( A & B ) ).
-	x
+	use A in
+		x
+	end
