@@ -10,6 +10,8 @@ Notes:
 
  * To simplify the implementation of the system, since our focus is on RG protocols, the only way to introduce & types is with 'share'.
 
+  * Prototype now uses recursive type definitions instead of standard recursive types. Simplifies syntax and implementation.
+
 == Libraries ==
 
 See [https://code.google.com/p/dead-parrot/wiki/Libraries link].
