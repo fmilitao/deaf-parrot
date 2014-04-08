@@ -1,16 +1,19 @@
 #labels Featured
-#Notes on the prototype implementation.
+#Prototype implementation notes.
 
 = Implementation =
 
-Focus on both showing typing information, and protocol uses. Due to this, some additional type annotations are required, for instance on alternatives to avoid "retrying" on different alternative. Likewise, the use of (+) and & is mostly targeted to protocols.
+Prototype's design is focused on showing typing information and protocol uses/conformance.
+
+Consequently, some additional type annotations are required, for instance on alternatives to avoid "retrying" on different alternative.
 
 Notes:
- * Delta^G restrictions on environments still shows the defocus-guarantee (although it is not accessible). Just like framing still shows the types framed, the typing information does not omit the defocus-guarantee inside functions and foralls although they are actually NOT accessible from within (you get a type error). Not very user friendly...
 
- * To simplify the implementation of the system, since our focus is on RG protocols, the only way to introduce & types is with 'share'.
+ * Delta^G restrictions on environments still shows the defocus-guarantee (although it is not accessible) on the typing information panel. Just like framing still shows the types framed, the typing information does not omit the defocus-guarantee inside functions and foralls although they are actually NOT accessible from within (you get a type error). Not very user friendly...
 
-  * Prototype now uses recursive type definitions instead of standard recursive types. Simplifies syntax and implementation.
+ * To simplify the implementation and center it on RG protocols, the only way to introduce & types is with 'share'.
+
+  * Prototype now uses recursive type definitions instead of standard rec types. Simplifies syntax and implementation.
 
 == Libraries ==
 
