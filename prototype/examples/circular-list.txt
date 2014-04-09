@@ -1,0 +1,22 @@
+// Circular list example.
+// Functions that deallocates all cells.
+// Note that there are no cycles due to linear ownership, even cells are shared.
+
+typedef N<h,l> = rw l (Node#(exists q.( ref q :: ( N[h,q] (+) H[h,q] ) )))
+typedef H<h,l> = rw l (Cycle#ref h)
+
+typedef Node<h> = exists q.( ref q :: ( N[h,q] (+) H[h,q] ) )
+
+// 'h' is for the head location
+fun DellAll<h>( x : Node[h] ) : int.
+	open <n,node> = x in
+		use n in
+			let c = !node in
+				delete node;
+				case c of
+					Node#next -> (DellAll[h] next)
+				| Cycle#head -> 0
+				end
+			end
+		end
+	end
