@@ -1,2 +1,17 @@
+// exists A.A :: (rw s End#int+More#(exists A.A)) -o [] :: (rw s End#int+More#(exists A.A))
 
-"free"
+typedef t_GC<t> = rw t (End#int + More#[exists q.(ref q :: (t_GC[q])),(exists A.A)])
+
+open <GC,gc> =
+	open <s,list> = new End#0 in
+		< (t_GC[s]) : GC ,
+		fun R( x : (exists A.A) :: (t_GC[s]) ) : ![] :: (t_GC[s]).
+			let old = new !list in
+				list := More#{old,x};
+				{}
+			end 
+		:: (t_GC[s]) >
+	end
+	in
+	gc <int,0>
+end
