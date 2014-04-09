@@ -15,7 +15,7 @@ typedef H<p> = // note the two recursions
 typedef T<p> =  rw p !(Empty#[]) =>
 	( (rw p !(Closed#[])) (+) (rw p (Node#[int,exists q.(!ref q :: (H[q]))])) )
 
-let newPipe = fun( _ : [] ).
+let newPipe = fun( __ : [] ).
 	// initial node to be shared:
 	open <n,node> = new Empty#{} in
 		share n as (H[n]) || (T[n]);
@@ -48,12 +48,12 @@ let newPipe = fun( _ : [] ).
 				use f in
 					focus f;
 					case !first of
-							Empty#_ -> // still empty, no need to change anything
+							Empty#___ -> // still empty, no need to change anything
 								first := Empty#{};
 								defocus;
 								head := <f,first :: (H[f])>; // reassign (content was/is linear type)
 								NoResult#({}::rw h (exists p.(!ref p :: (H[p]))))
-					|		Closed#_ -> // end of pipe, pipe closed
+					|		Closed#___ -> // end of pipe, pipe closed
 								delete first;
 								delete head;
 								defocus;

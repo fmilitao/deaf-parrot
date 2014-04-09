@@ -1281,8 +1281,13 @@ var TypeChecker = (function(AST,assertF){
 		
 		// operations over IDENTIFIERS
 		this.set = function(id,value){
-			if ( this.$map.hasOwnProperty(id) )
-				return undefined; // already exists
+			var tmp = this;
+			while( tmp !== null ){
+				if ( tmp.$map.hasOwnProperty(id) )
+					return undefined; // already exists
+				tmp = tmp.$parent; // check parent
+			}
+			
 			this.$map[id] = value;
 			return true; // ok
 		}

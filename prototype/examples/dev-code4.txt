@@ -1,6 +1,1 @@
-
-
-<A><B>fun( x : int :: ( A & B ) ).
-	use A in
-		x
-	end
+0

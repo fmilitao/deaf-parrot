@@ -3,7 +3,7 @@
 // the resulting sequential behavior is:
 // setBool ; setInt ; getInt ; dispose
 
-let newBehavior = fun( _ : [] ).
+let newBehavior = fun( __ : [] ).
 	open <p,x>= new 0 in
 		let method = 
 		{ // list of methods from which the behavior will be made
@@ -25,7 +25,7 @@ let newBehavior = fun( _ : [] ).
 						// 3rd
 						{
 						method.getInt({}), 
-						fun( _ : []).(method.dispose {})
+						fun( ___ : []).(method.dispose {})
 						}
 					}
 				}

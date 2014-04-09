@@ -1,13 +1,25 @@
 //FIXME: work in progress
+//FIXME: gargabe collector used/not on different alternatives
 
 typedef Nil   <p> = rw p (Nil#[])
 typedef NilP  <p> = Nil[p] => Nil[p] ; NilP[p]
 typedef Node  <p> = rw p (Node#[int,exists q.( !(ref q) :: ( NilP[q] (+) NodeP[q] ) )])
 typedef NodeP <p> = Node[p] => Node[p] ; NodeP[p]
 
-typedef Stack = exists q.( (!ref q) :: (NodeP[q] (+) NilP[q]) )
+typedef SNode = exists q.( (!ref q) :: (NodeP[q] (+) NilP[q]) )
 
-// simple "gargabe collector" using a list
+typedef t_Stack<GC> =
+	exists S.( ![
+		push: !( int :: S -o [] :: S ),
+		pop: !( [] :: (GC * S) -o !(Result#!int+End#![]) :: (S * GC) ),
+		clone: !( [] :: S -o (t_Stack[GC]) :: S )
+		] :: S )
+
+// Simple "gargabe collector" using a linked list.
+// this gargabe collector is needed because 'pop' will discard a node but
+// since it is shared through invariant-based sharing it cannot be deleted
+// instead, it is pushed to this linked list of linear types. I.e. to some
+// lower-level garbage collector.
 typedef t_GC<t> = rw t (End#int + More#[exists q.(ref q :: (t_GC[q])),(exists A.A)])
 
 open <GC,gc> = 
@@ -25,12 +37,12 @@ open <GC,gc> =
 let newSpaghetti = fun( _ : [] ).
  
  // private function, creates a Stack
- let make = fun( up : Stack ).
+ let make = fun Make( up : SNode ) : t_Stack[GC].
  
   open<h,head> = new up in
-   <rw h Stack : S, {
+   <rw h SNode : S, {
 
-    push = fun Push( i : int :: rw h Stack ) : [] :: rw h Stack.
+    push = fun Push( i : int :: rw h SNode ) : [] :: rw h SNode.
 		open <t,n> = new Node#{i,!head} in
 			// it is always possible to share a node alone
 			share Node[t] as (NodeP[t]) || none;
@@ -38,7 +50,7 @@ let newSpaghetti = fun( _ : [] ).
 			head := < t, n :: ( NodeP[t] (+) NilP[t] ) >
 		end,
 
-    pop = fun ( _ : [] :: (GC * (rw h Stack)) ).
+    pop = fun ( __ : [] :: (GC * (rw h SNode)) ).
 		open <t,n> = !head in
 			use t in
 				focus (Node[t]), (Nil[t]);
@@ -48,7 +60,7 @@ let newSpaghetti = fun( _ : [] ).
 						n := Nil#x;
 						defocus;
 						head := < t, n :: ( NodeP[t] (+) NilP[t] ) > ;
-						gc <!int, 0>; // FIXME a bit silly that this is required...
+						gc <!int, 0>;		// >>>> FIXME a bit silly that this is required to match alternatives...
 						End#{}
 				| Node#z ->
 					// Although we pop the contents, we must leave the shared state
@@ -84,11 +96,9 @@ let newSpaghetti = fun( _ : [] ).
 						end
 				end
 			end
-		end
-		/*
-		,
-// [] :: rw h Stack -o Stack :: rw h Stack		
-	clone = fun( _ : [] :: rw h ( exists q.( ref q :: ((NodeP[q]) (+) (NilP[q])) ) ) ).
+		end,
+			
+	clone = fun( __ : [] :: rw h SNode ).
 		open <t,n> = !head in
 			use t in
 				focus (Node[t]), (Nil[t]);
@@ -96,24 +106,28 @@ let newSpaghetti = fun( _ : [] ).
 					Node#x ->
 						n := Node#x;
 						defocus;
-						share (NodeP[t]) as (NodeP[t]) || (NodeP[t]);
+						share NodeP[t] as (NodeP[t]) || (NodeP[t]);
 						head := < t, n :: ( (NodeP[t]) (+) (NilP[t]) )>;
 						Make < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) >
 				| Nil#y ->
 						n := Nil#y;
 						defocus;
-						share (NilP[t]) as (NilP[t]) || (NilP[t]);
+						share NilP[t] as (NilP[t]) || (NilP[t]);
 						head := < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) >;
 						Make < t, n :: ( (NodeP[t]) (+) (NilP[t]) ) >
 				end
 			end
-		end */
+		end
 
-	} :: rw h Stack >
+	} :: rw h SNode >
 	end
 	in
-		// creates an empty stack (nil up)
-		make //Nil#{}
+		// initial node
+		open <t,n> = new Nil#{} in
+			share Nil[t] as (NilP[t]) || none;
+			// creates an empty stack (nil up)
+			make < t, n :: ( NodeP[t] (+) NilP[t] ) >
+		end
 	end
 	
 	// client code

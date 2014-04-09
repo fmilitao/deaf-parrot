@@ -8,7 +8,7 @@ typedef Behavioral<T> = exists t.( ref t :: rw t (initLType[T,t]) )
 
 
 // typestate pair object
-let newPair = fun( _ : [] ).
+let newPair = fun( __ : [] ).
 	open <pl,l> = new {} in
 	open <pr,r> = new {} in
 		<rw pl []: EL, // Empty Left
@@ -37,12 +37,12 @@ let newPair = fun( _ : [] ).
 					initLeft = fun( i : int :: rw self [] ).
 						let result = o.initL(i) in
 							// set the next behavior
-							this := { initRight = fun( i : int :: rw self [] ).
-								let result = o.initR(i) in
+							this := { initRight = fun( j : int :: rw self [] ).
+								let res = o.initR(j) in
 									this := { // note that it returns the captured capability
 										addBoth =  fun( _ : [] :: rw self [] ). 
 										( delete this ; o.sum({}) ) 
-									}; result end
+									}; res end
 							}; result end
 				};
 			
@@ -52,8 +52,8 @@ let newPair = fun( _ : [] ).
 			< self : ptr, this :: (rw self (initLType[R*L,self])) >
 			end
 			in
-			let f = <T>fun( o : Behavioral[T] ).( 
-				open <ind,ptr> = o in
+			let f = <T>fun( oo : Behavioral[T] ).( 
+				open <ind,ptr> = oo in
 					!ptr.initLeft(1);
 					!ptr.initRight(2);
 					!ptr.addBoth({})
