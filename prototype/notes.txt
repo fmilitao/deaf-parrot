@@ -4,6 +4,7 @@ FIXME:
 TODO:
 	>> error messages: ['the type:', type, 'was not needed']
 	to enable HTML prints of error messages.
+	- collisions on variable names?? issue with linear variables
 
 TODO:
 	>> use visitors instead of big 'case'!

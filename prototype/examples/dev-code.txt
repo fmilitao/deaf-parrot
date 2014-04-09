@@ -1,3 +1,4 @@
+//TODO: move this to test?
 
 typedef A<t> = rw t !int => rw t !int ; A[t]
 
