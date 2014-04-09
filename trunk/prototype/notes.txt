@@ -45,10 +45,7 @@ TODO:
 ========================================
 
 TYPECHECKER, missing features: 
-
  - isEquals on environments must be cleaned
-
- - join multiple typing environments with (+)
 
 ========================================
 
@@ -72,11 +69,6 @@ TODO?
 	anyway...
 
 # IDIOT YOU ARE USING RECURSION WHEN WHILE IS ENOUGH
-
-# stacking alternatives:
- - other alternatives must be invalid, or there could be duplication of caps.
- - improve mergin so that differences are grouped in *-type and then (+). This
- 	will then allow merging environments with different caps.
 
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

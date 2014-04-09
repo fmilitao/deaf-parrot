@@ -14,11 +14,8 @@ typedef FB<q,t> = ( (rw q int) * (rw t !(ToBool#[]) ) )
 	use P[q,t] in
 		focus (FS[q,t]),(FB[q,t]);
 		case !y of
-			ToString#_ ->
-				x := "ok";
-				defocus
-		|	ToBool#_ ->
-				x := true;
-				defocus
-		end
+			ToString#_ -> x := "ok"
+		|	ToBool#_ -> x := true
+		end;
+		defocus
 	end

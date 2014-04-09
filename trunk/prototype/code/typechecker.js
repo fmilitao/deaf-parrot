@@ -1167,6 +1167,7 @@ var TypeChecker = (function(AST,assertF){
 			
 			for( var i in a.$map ){
 				var tmp = a.$map[i];
+				// is not "nonshared" and is not a type variable entrey
 				if( !isNonShared(tmp) && i.indexOf(TYPE_INDEX) !== 0 ){
 					// move to defocus environment
 					delete a.$map[i];
@@ -1188,19 +1189,43 @@ var TypeChecker = (function(AST,assertF){
 			
 			if( a.$parent !== null ){
 				d_env.$parent = new Environment(null);
-				split(a.$parent,d_env.$parent);
-				
-				// nest defocus guarantees, if they exist
-//XXX why just on parents???
-				d_env.$parent.$defocus_guarantee = a.$parent.$defocus_guarantee;
-				d_env.$parent.$defocus_env = a.$parent.$defocus_env;
-				
-				a.$parent.$defocus_guarantee = null;
-				a.$parent.$defocus_env = null;
-
+				split(a.$parent,d_env.$parent);				
 			}
 			
+			// any defocus guarantee should move to 'd_env'
+			d_env.$defocus_guarantee = a.$defocus_guarantee;
+			d_env.$defocus_env = a.$defocus_env;
+				
+			a.$defocus_guarantee = null;
+			a.$defocus_env = null;
+			
 			return null;
+		}
+		
+		this.focus = function(t){
+			if( t.type !== types.RelyType )
+				return undefined;
+			
+			var tmp = new Environment(null);
+			
+			split( this, tmp );
+			
+			this.$defocus_guarantee = t.guarantee();
+			this.$defocus_env = tmp;
+			
+			// append the focused cap
+			return t.rely();
+			//return true; //signals OK
+		}
+		
+		// finds closest defocus_guarantee (without the environment)
+		this.defocus_guarantee = function(){
+			if( this.$defocus_guarantee !== null )
+				return this.$defocus_guarantee;
+			if( this.$parent !== null && defocus_up )
+				return this.$parent.defocus_guarantee();
+			
+			return undefined;
 		}
 		
 		// merge the environments
@@ -1212,64 +1237,38 @@ var TypeChecker = (function(AST,assertF){
 				a.$map[i] = d_env.$map[i];
 			}
 			
-			for( var i=0; i<d_env.$caps.length;++i ){
+			for( var i=0; i<d_env.$caps.length; ++i ){
 				a.$caps.push( d_env.$caps[i] );
 			}
-			
-			var tmp = a.$defocus_env;
-			if( tmp !== null ){
-				a.$defocus_guarantee = tmp.$defocus_guarantee;
-				a.$defocus_env = tmp.$defocus_env;
-			}		
-			
-			if( a.$parent !== null ){
-				return merge(a.$parent,d_env.$parent);
+
+			if( a.$parent !== null && d_env.$parent !== null ){
+				merge( a.$parent, d_env.$parent );
 			}
+
+			if( d_env.$defocus_env !== null ){
+				
+				if( a.$defocus_guarantee !==null || a.$defocus_env !== null )
+					error('merge problem');
+					
+				a.$defocus_guarantee = d_env.$defocus_guarantee;
+				a.$defocus_env = d_env.$defocus_env;
+			}		
+		
 			return null;
 		}
 		
-		this.focus = function(t){
-			if( t.type !== types.RelyType )
-				return undefined;
-			
-			var tmp = new Environment(null);
-			this.$defocus_guarantee = t.guarantee();
-			this.$defocus_env = tmp;
-			
-			split( this, tmp );
-			
-			// append the focused cap
-			return t.rely();
-			//return true; //signals OK
-		}
-		
-		// finds closest defocus_guarantee (without the environment)
-		this.defocus_guarantee = function(){
-			if( this.$defocus_guarantee !== null )
-				return this.$defocus_guarantee;
-			if( this.$parent === null )
-				return undefined;
-			
-			// if can go upwards
-			if( defocus_up )
-				return this.$parent.defocus_guarantee();
-			
-			return undefined;
-		}
-		
 		this.defocus = function(){
+			// no pending defocus
 			if( this.$defocus_guarantee === null ){
-				if( this.$parent === null )
-					return undefined;
 				// search upwards...
-				return this.$parent.defocus();
+				if( this.$parent !== null && defocus_up )
+					return this.$parent.defocus();
 			}
-//debugger
-			// merge environments
-			//var tmp = this.$defocus_env;
+
+			var tmp = this.$defocus_env;
 			merge( this, this.$defocus_env );
-			//this.$defocus_guarantee = tmp.$defocus_guarantee;
-			//this.$defocus_env = tmp.$defocus_env;
+			this.$defocus_guarantee = tmp.$defocus_guarantee;
+			this.$defocus_env = tmp.$defocus_env;
 		}
 		
 		// scope methods		
@@ -3058,9 +3057,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 				
 				env.defocus();
 				
-				unstackType(
-					unAll( dg.rely(), false, true) 
-					, env, ast );
+				unstackType( unAll( dg.rely(), false, true), env, ast );
 				return new BangType(new RecordType());
 			};
 			
