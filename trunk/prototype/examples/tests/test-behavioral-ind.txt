@@ -1,7 +1,7 @@
 //OK {dispose=Function Value}
 //OK ![]
 
-let newBehavior = fun( _ : [] ).
+let newBehavior = fun( __ : [] ).
 	open <this,ptr> = new {} in
     	// private state
         open <p,field> = new {} in
@@ -16,13 +16,13 @@ let newBehavior = fun( _ : [] ).
                 	setInt = fun( i : int :: rw this []).
                 		let val = (method.setInt i) in
                 			ptr := {
-                				getInt = fun( _ : [] :: rw this [] ).
-                					let val = (method.getInt {} ) in
+                				getInt = fun( _1 : [] :: rw this [] ).
+                					let value = (method.getInt {} ) in
                 						ptr := {
-                							dispose = fun( _ : [] :: rw this [] ).
+                							dispose = fun( _2 : [] :: rw this [] ).
                 								(method.dispose {})
                 						};
-                						val
+                						value
                 					end
                 			};
                 			val

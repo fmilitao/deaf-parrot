@@ -17,8 +17,8 @@ let newPair = fun( _ : [] ).
 		{
 			initL = fun( i : int :: rw pl [] ).( l := i ),
 			initR = fun( i : int :: rw pr [] ).( r := i ),
-			sum = fun( _ : [] :: ( rw pl int * rw pr int ) ). (add !l !r),
-			destroy = fun ( _ : [] :: ( rw pl int * rw pr int ) ).( delete l; delete r ) 
+			sum = fun( __ : [] :: ( rw pl int * rw pr int ) ). (add !l !r),
+			destroy = fun ( __ : [] :: ( rw pl int * rw pr int ) ).( delete l; delete r ) 
 		}:: ( rw pl [] * rw pr [] )
 		>>>>
 	end
@@ -36,12 +36,12 @@ let newPair = fun( _ : [] ).
 					initLeft = fun( i : int :: rw self [] ).
 						let result = o.initL(i) in
 							// set the next behavior
-							this := { initRight = fun( i : int :: rw self [] ).
-								let result = o.initR(i) in
+							this := { initRight = fun( j : int :: rw self [] ).
+								let res = o.initR(j) in
 									this := { // note that it returns the captured capability
 										addBoth =  fun( _ : [] :: rw self [] ). 
 										( delete this ; o.sum({}) ) 
-									}; result end
+									}; res end
 							}; result end
 				};
 			
@@ -51,8 +51,8 @@ let newPair = fun( _ : [] ).
 			< self : ptr, this :: (rw self (initLType[R*L,self])) >
 			end
 			in
-			let f = <T>fun( o : Behavioral[T] ).( 
-				open <ind,ptr> = o in
+			let f = <T>fun( oo : Behavioral[T] ).( 
+				open <ind,ptr> = oo in
 					!ptr.initLeft(1);
 					!ptr.initRight(2);
 					!ptr.addBoth({})

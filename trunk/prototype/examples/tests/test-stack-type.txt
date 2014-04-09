@@ -9,7 +9,7 @@ typedef AUX<E,NE> = ![
 	pop : [] :: NE -o int :: ( E (+) NE ),
 	isEmpty : [] :: ( NE (+) E ) -o Empty#([]::E) + NonEmpty#([]::NE) ]
 
-let newStack = <T>fun( _ : [] ).
+let newStack = <T>fun( __ : [] ).
 	open <h,head> = new E#{} in
 		<EMPT[h]:E,	// Empty Stack
 		<ELEM[T,h]:NE, // NonEmpty Stack

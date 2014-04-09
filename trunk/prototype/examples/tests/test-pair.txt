@@ -1,7 +1,7 @@
 //OK 34
 //OK !int
 
-let newPair = fun( _ : [] ).
+let newPair = fun( __ : [] ).
 	open <pl,l> = new {} in
 	open <pr,r> = new {} in
 		<pl:left,<pr:right,

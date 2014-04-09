@@ -1,7 +1,7 @@
 
 // Very simple typestate example with just two states: BOOL/INT.
 
-let newObject = fun( _ : [] ).
+let newObject = fun( __ : [] ).
 	open <p,x>= new 0 in
 		< rw p boolean : BOOL,
 		< rw p int : INT,

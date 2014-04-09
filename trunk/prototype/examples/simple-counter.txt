@@ -9,7 +9,7 @@ typedef Any<p> = rw p N => rw p P ; rw p P => rw p N; Any[p]
 open <v,value> = new Z#{} in
 	share (rw v (Z#[])) as (IncOnly[v]) || (Any[v]);
 
-	open <Unknown,_> =
+	open <Unknown,__> =
 		// same trick to hide the other shared type, IncOnly[v]
 		let outside = fun( _ : [] :: (IncOnly[v])).
 			(<(IncOnly[v]):U,{}::(IncOnly[v])>) in

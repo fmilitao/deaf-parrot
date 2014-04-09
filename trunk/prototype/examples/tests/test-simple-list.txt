@@ -94,8 +94,8 @@ let GenericList = <T> {
 					let [a,b] = n in
 						// convenient auxiliary function to
 						// just iterate over all elements of the list
-						let it = fun Rec( list : Node[int] ) : (!(Empty#![])).
-				            case list of
+						let it = fun Rec( lst : Node[int] ) : (!(Empty#![])).
+				            case lst of
 				              E#n ->
 				              	open <l0,ptr> = n in
 				              		delete ptr;

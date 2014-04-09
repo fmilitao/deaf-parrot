@@ -3,7 +3,7 @@
 import add
 
 // 1. only abstracting the location variable
-let newPair = fun( _ : [] ).
+let newPair = fun( __ : [] ).
 	open <pl,l> = new {} in
 	open <pr,r> = new {} in
 		// packs 'pl' as "left" and 'pr' as "right"
@@ -36,7 +36,7 @@ let newPair = fun( _ : [] ).
 end;
 
 // 2. typestate version, same code different packs.
-let newPair = fun( _ : [] ).
+let newPair = fun( __ : [] ).
 	open <pl,l> = new {} in
 	open <pr,r> = new {} in
 		<rw pl []:EL,<rw pr []:ER,<rw pr int:R,<rw pl int:L,

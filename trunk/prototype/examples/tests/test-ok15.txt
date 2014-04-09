@@ -6,6 +6,6 @@ open <t,x> =
 			<t:blah,x::rw t int>
 		end
 	in
-	<t:testing,<p>fun( x : [] :: rw p int ).x [t] :: rw t int>
+	<t:testing,<p>fun( y : [] :: rw p int ).y [t] :: rw t int>
 end
 

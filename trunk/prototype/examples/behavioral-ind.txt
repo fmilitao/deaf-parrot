@@ -5,7 +5,7 @@
 // The resulting sequential behavior:
 // setInt ; getInt ; dispose
 
-let newBehavior = fun( _ : [] ).
+let newBehavior = fun( __ : [] ).
 	open <this,ptr> = new {} in
     	// private state
         open <p,field> = new {} in
@@ -21,12 +21,12 @@ let newBehavior = fun( _ : [] ).
                 		let val = (method.setInt i) in
                 			ptr := {
                 				getInt = fun( _ : [] :: rw this [] ).
-                					let val = (method.getInt {} ) in
+                					let _val = (method.getInt {} ) in
                 						ptr := {
-                							dispose = fun( _ : [] :: rw this [] ).
+                							dispose = fun( ___ : [] :: rw this [] ).
                 								(method.dispose {})
                 						};
-                						val
+                						_val
                 					end
                 			};
                 			val
