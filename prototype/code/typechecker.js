@@ -2994,8 +2994,16 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 				if( cp.type === types.LocationVariable ){
 					cap = env.removeNamedCap( cp.name() );
 				}else{
-					cap = env.removeCap(
-						function(c){ return subtypeOf(c,cp); } );
+					cap = unAll( cp, false, true );
+
+					// remove types from environment
+					var c = autoStack ( null, cap, env, ast.type );
+					// make sure that the capabilities that were extracted from 
+					// the typing environment can be used as the written cap.
+					assert( subtypeOf( c, cap ) ||
+						('Incompatible capability "'+c+'" vs "'+cap+'"'), ast.type );
+					
+					//cap = env.removeCap( function(c){ return subtypeOf(c,cp); } );
 				}
 				
 				assert( cap !== undefined || ("No capability to '"+cp+"'"), ast );
