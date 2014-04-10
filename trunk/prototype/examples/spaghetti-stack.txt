@@ -60,7 +60,7 @@ let newSpaghetti = fun( _ : [] ).
 						n := Nil#x;
 						defocus;
 						head := < t, n :: ( NodeP[t] (+) NilP[t] ) > ;
-						gc <!int, 0>;		// >>>> FIXME a bit silly that this is required to match alternatives...
+						{} :: GC; // >>>> FIXME a bit silly that this is required to match alternatives...
 						End#{}
 				| Node#z ->
 					// Although we pop the contents, we must leave the shared state

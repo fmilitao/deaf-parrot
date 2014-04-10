@@ -1,1 +1,9 @@
-0
+
+
+<A>fun( x : ( L#int + U#boolean ) :: A ).
+	case x of
+	  L#i ->
+	  	0::A
+	| U#b ->
+		0
+	end
