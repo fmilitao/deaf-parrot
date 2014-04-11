@@ -1553,6 +1553,39 @@ var TypeChecker = (function(AST,assertF){
 					}
 				}
 				
+				/* // FIXME this idea didn't work...
+				// clean up for case where diff cap may be above.
+				var tmp_diff_a = diff_a;
+				diff_a = [];
+				for( var i=0 ; i<tmp_diff_a.length ; ++i ){
+					var tmp = a.removeCap(
+						function(c){ return subtypeOf(c,tmp_diff_a[i]); }
+					);
+					
+					if( tmp !== undefined ){
+						a.setCap( tmp );
+						common.push( tmp );
+					}else{
+						diff_a.push( tmp_diff_a[i] );
+					}
+				}
+				var tmp_diff_b = diff_b;
+				diff_b = [];
+				for( var i=0 ; i<tmp_diff_b.length ; ++i ){
+					var tmp = b.removeCap(
+						function(c){ return subtypeOf(c,tmp_diff_b[i]); }
+					);
+					
+					if( tmp !== undefined ){
+						b.setCap( tmp );
+						common.push( tmp );
+					}else{
+						diff_b.push( tmp_diff_b[i] );
+					}
+				}
+				*/
+				// ----
+				
 				a.$caps = common;
 				a_caps = common;
 	
