@@ -1350,9 +1350,11 @@ var TypeChecker = (function(AST,assertF){
 			return env;
 		}
 		
-		// FIXME: more of a merge
-		this.isEqual = function(other){
-			return comps(this,other,true);
+		// This is actually more of a merge envs.
+		this.isEqual = function(other,m){
+			if( m === undefined )
+				m = true;
+			return compKeys(this,other) && compCaps(this,other,m);
 		}
 		
 		// no order is guaranteed!
@@ -1468,22 +1470,20 @@ var TypeChecker = (function(AST,assertF){
 	// TYPE CHECKER
 	//
 	
-	// FIXME clean up
-	var comps = function(a,b,merge_caps){
+	var compKeys = function(a,b){
 			// compare nulls due to parents
 			if( a === null && b === null )
 				return true;
 			if( a === null ^ b === null )
 				return false;
-			if( a.size() !== b.size() )
-				return false;
-			// 1st: just check above, never merging
-			if( !comps(a.$parent,b.$parent,false) )
-				return false
 			
-			// 2nd: check keys
 			var a_map = a.$map;
 			var b_map = b.$map;
+			
+			// must have exact match
+			if( a_map.length !== b_map.length )
+				return false;
+			
 			for( var id in a_map ){
 				if( !b_map.hasOwnProperty(id) )
 					return false;
@@ -1491,12 +1491,38 @@ var TypeChecker = (function(AST,assertF){
 				if( !equals( a_map[id], b_map[id] ) )
 					return false;
 			}
-			
+
+			return compKeys(a.$parent,b.$parent);
+	}
+	
+	var compCaps = function(a,b,merge){
+			// compare nulls due to parents
+			if( a === null && b === null )
+				return true;
+			if( a === null ^ b === null )
+				return false;
+
+//XXX missing checking defocus guarantees! must be exactly the same.
+			if( a.$defocus_guarantee === null ^ b.$defocus_guarantee === null )
+				return false;
+			else{
+				/*
+				if( !equals(a.$defocus_guarantee,b.$defocus_guarantee) )
+					return false;
+				if( !equals(a.$defocus_env,b.$defocus_env) )
+				*/
+			}
+
+
+//XXX messy should enable to merge with caps up above.			
 			var a_caps = a.$caps;
 			var b_caps = b.$caps;
+
+			if( a_caps.length !== b_caps.length )
+				return false;
 			
 			// 3rd: merge caps
-			if( merge_caps ){
+			if( merge ){
 				// this will merge b with a's caps
 				
 				// find those caps that are common to both
@@ -1559,12 +1585,11 @@ var TypeChecker = (function(AST,assertF){
 					alter.add( bt );
 					a_caps.push( alter );
 				}
-				return true;
 				
 			} else { // just check if equal
 				if( a_caps.length !== b_caps.length )
 					return false;
-				
+
 				// may be with any order
 				var seen = [];
 				for( var i=0;i<a_caps.length;++i){
@@ -1580,8 +1605,10 @@ var TypeChecker = (function(AST,assertF){
 					if( !found )
 						return false;
 				}
-				return true;
+
 			}
+
+			return compCaps(a.$parent,b.$parent,false);
 		}
 		
 		
