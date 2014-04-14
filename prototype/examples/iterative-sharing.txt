@@ -15,7 +15,6 @@ typedef Storer  <f,c> = ( F[f,c] => F[f,c] ; Storer[f,c]) (+) Storer_[f,c]
 typedef Storer_ <f,c> = ( R[f,c] => R[f,c] ; Storer_[f,c] ) (+) ( D[f,c] => none )
 
 typedef TMP  <f,c> = ( F[f,c] => F[f,c] ; TMP[f,c] ) (+) TMP_[f,c]
-// FIXME: bug on use of &-types
 typedef TMP_ <f,c> = ( R[f,c] => R[f,c] ; TMP_[f,c] ) & ( R[f,c] => D[f,c] ; D[f,c] => none )
 
 <f><c>fun( x : [] :: (F[f,c]) ).

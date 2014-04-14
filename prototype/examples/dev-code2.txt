@@ -1,9 +1,18 @@
 
+// useful states
+typedef H<t> = rw t (Held#[])
+typedef F<t> = rw t (Free#int)
 
-<t>fun( x : ref t :: (rw t int => rw t boolean ; none) ).
-	let z = x in
-		focus t;
-		z := false;
-		//defocus;
-		0
-	end
+// sharing protocols
+typedef A<p> = ( H[p] => H[p] ; A[p] ) & ( H[p] => H[p] ; A[p] )
+typedef B<p> = ( H[p] => H[p] ; B[p] ) & ( H[p] => F[p] ; F[p] => none )
+
+typedef P<l> = ( H[l] => H[l] ; P[l] ) & ( H[l] => F[l] ; F[l] => none )
+typedef P0<l> = ( H[l] => H[l] ; P0[l] ) (+) ( F[l] => none )
+typedef P1<l> = ( H[l] => F[l] )
+
+<t>fun( x : [] :: (H[t]) ).( share H[t] as (A[t]) || (A[t]) );
+
+<t>fun( x : [] :: (H[t]) ).( share H[t] as (B[t]) || none );
+
+<t>fun( x : [] :: (P[t]) ).( share P[t] as (P0[t]) || (P1[t]) )
