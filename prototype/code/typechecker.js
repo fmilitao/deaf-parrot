@@ -2139,6 +2139,8 @@ var getInitialState = function( p ){
 					v.push(j);
 				}
 			}
+			if( v.length === 1 )
+				return v[0];
 			return tmp;
 		}
 		case types.NoneType:
@@ -2199,8 +2201,12 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 	var max_visited = 100; // safeguard against 'equals' bugs, bounds execution.	
 	var visited = new Visited();
 	
-	// must match 'p', starting with 's', with resulting state 'm'
-	// returns the residual protocol of p
+	/**
+	 * @param 's' - initial state
+	 * @param 'p' - protocol
+	 * @param 'm' - state to match
+	 * @return residual protocol of 'p'
+	 */
 	var simM = function( s, p, m ){
 		p = unAll(p,false,true);
 		
@@ -2209,7 +2215,7 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 						('[Protocol Conformance]: '+s+' not <: '+m) );
 			return p;
 		}
-//FIXME missing intersection type support		
+
 		// now state
 		if( s.type === types.AlternativeType ){
 			var tmp_s = null;
@@ -2237,7 +2243,7 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 			var alts = p.inner();
 			for( var i=0; i<alts.length; ++i ){
 				try{
-					return simM( s, alts[i], o );
+					return simM( s, alts[i], m );
 				}catch(e){
 					// assume it is an assertion error, continue to try with
 					// some other alternative
@@ -2246,6 +2252,22 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 			}
 			assert( '[Protocol Conformance] No matching alternative.\n'+
 				'state:\t'+s+'\n'+
+				'match:\t'+m+'\n'+
+				'step:\t'+p, ast );
+		}
+		
+		if( p.type === types.IntersectionType ){
+			var alts = p.inner();
+			for( var i=0; i<alts.length; ++i ){
+				try{
+					return simM( s, alts[i], m );
+				}catch(e){
+					continue;
+				}
+			}
+			assert( '[Protocol Conformance] No matching choice.\n'+
+				'state:\t'+s+'\n'+
+				'match:\t'+m+'\n'+
 				'step:\t'+p, ast );
 		}
 
@@ -2261,22 +2283,26 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 		var next = pp.guarantee();
 		assert( next.type === types.GuaranteeType ||
 			('Expecting GuaranteeType, got: '+next.type), ast);
-
-		assert( equals( next.guarantee(), m ) ||
-			('[Protocol Conformance]: '+s+' not <: '+m) );
+//debugger
+		// note that we are comparing => A with => B, such that A <: B
+		// i.e. only the resulting
+		assert( subtypeOf( next.guarantee(), m ) ||
+			('[Protocol Conformance]: '+next.guarantee()+' not <: '+m), ast );
 
 		return next.rely();
 	}
 	
 	// returns {state, protocol, other}
 	var simP = function( s, p, o ){
+//debugger
 		// unfold recursive types, etc.
 		p = unAll(p,false,true);
-		
+
 		// first protocol
 		if( p.type === types.NoneType ){
+			// 'o'ther must have same state
 			var m = simM( s, o, s );
-			return { state : s, protocol: p, other: m };
+			return [{ state : s, protocol: p, other: m }];
 		}
 
 		// now state
@@ -2287,23 +2313,23 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 			var alts = s.inner();
 			// note that the resulting state must match, up to subtyping
 			// i.e. in case of alternatives these should be merged
-//XXX for now equality is enough?
 			for( var i=0; i<alts.length; ++i ){
-				var tmp = simP( alts[i], p, o );
+				var tmp = simP( alts[i], p, o )[0]; // FIXME ?
 				if( tmp_s === null ){
 					tmp_s = tmp.state;
 					tmp_p = tmp.protocol;
 					tmp_m = tmp.other;
 				}else{
+					//for now equality is enough
 					assert( ( equals( tmp_s, tmp.state ) && 
 									equals( tmp_p, tmp.protocol ) &&
 										equals( tmp_m, tmp.other ) ) ||
-						('[Protocol Conformance] Alternatives mimatch'), ast );
+						('[Protocol Conformance] Alternatives mismatch'), ast );
 				}
 			}
 			// now match on the other one.
 			//var m = simM( s, o, tmp_s );
-			return { state : tmp_s, protocol: tmp_p, other: tmp_m };
+			return [{ state : tmp_s, protocol: tmp_p, other: tmp_m }];
 		}
 		
 		// tries to find one alternative that works
@@ -2311,7 +2337,7 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 			var alts = p.inner();
 			for( var i=0; i<alts.length; ++i ){
 				try{
-					return simM( s, alts[i], o );
+					return simP( s, alts[i], o );
 				}catch(e){
 					// assume it is an assertion error, continue to try with
 					// some other alternative
@@ -2320,7 +2346,17 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 			}
 			assert( '[Protocol Conformance] No matching alternative.\n'+
 				'state:\t'+s+'\n'+
+				'prot.:\t'+o+'\n'+
 				'step:\t'+p, ast );
+		}
+		
+		if( p.type === types.IntersectionType ){
+			var alts = p.inner();
+			var w = [];
+			for( var i=0; i<alts.length; ++i ){
+				w = w.concat( simP( s, alts[i], o ) );
+			}
+			return w;
 		}
 
 		// base case
@@ -2337,7 +2373,7 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 			('Expecting GuaranteeType, got: '+next.type), ast);
 
 		var m = simM( s, o, next.guarantee() );
-		return { state: next.guarantee(), protocol: next.rely(), other: m };
+		return [{ state: next.guarantee(), protocol: next.rely(), other: m }];
 	}
 	
 	var work = [];
@@ -2359,22 +2395,30 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 
 		// 1. step on _a matched by _p
 		var l = simP( _s, _a, _p );
-		work.push( [ l.state, l.other, l.protocol, _b ] );
+		for(var i=0;i<l.length;++i){
+			work.push( [ l[i].state, l[i].other, l[i].protocol, _b ] );
+		}
 		
 		// 2. step on _b matched by _p
 		var r = simP( _s, _b, _p );
-		work.push( [ r.state, r.other, _a, r.protocol ] );
+		for(var i=0;i<r.length;++i){
+			work.push( [ r[i].state, r[i].other, _a, r[i].protocol ] );
+		}
 		
 		// 3. step on _p matched by either _a or _b
 		try{
 			// 3.a) attempt with _a
 			var q = simP( _s, _p, _a );
-			work.push( [ q.state, q.protocol, q.other, _b ] );
+			for(var i=0;i<q.length;++i){
+				work.push( [ q[i].state, q[i].protocol, q[i].other, _b ] );
+			}
 		}catch(e){
 			// _a failed!
 			// 3.b) attempt with _b
 			var q = simP( _s, _p, _b );
-			work.push( [ q.state, q.protocol, _a, q.other ] );
+			for(var i=0;i<q.length;++i){
+				work.push( [ q[i].state, q[i].protocol, _a, q[i].other ] );
+			}
 			// if this throws exception, then it's a real conformance error.
 		}
 		
