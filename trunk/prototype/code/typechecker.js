@@ -1964,6 +1964,7 @@ var TypeChecker = (function(AST,assertF){
 				assert( (t === null || t.type === types.NoneType) ||
 					'Error @autoStack ', a );
 				return NoneType;
+			case types.IntersectionType:
 			case types.RelyType: {
 				var cap = e.removeCap( function(c){
 					return subtypeOf(p,c);
@@ -2114,6 +2115,29 @@ var getInitialState = function( p ){
 				if( j === undefined )
 					return undefined;
 				tmp.add(j);
+			}
+			return tmp;
+		}
+		case types.IntersectionType:{
+			var tmp = new IntersectionType();
+			var v = [];
+			var alts = p.inner();
+			for(var i=0;i<alts.length;++i){
+				var j = getInitialState(alts[i]);
+				if( j === undefined )
+					return undefined;
+				// simplistic way to avoid repeating alternatives
+				var found=false;
+				for(var u=0;u<v.length;++u){
+					if( equals(v[u],j) ){
+						found=true;
+						break;
+					}
+				}
+				if( !found ){
+					tmp.add(j);
+					v.push(j);
+				}
 			}
 			return tmp;
 		}
@@ -2375,7 +2399,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 		
 		// first protocol
 		if( p.type === types.NoneType )
-			return { s : s , p : p };
+			return [{ s : s , p : p }];
 
 		// now state
 		if( s.type === types.AlternativeType ){
@@ -2383,7 +2407,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 			var tmp_p = null;
 			var alts = s.inner();
 			for( var i=0;i<alts.length; ++i ){
-				var tmp = sim(alts[i],p);
+				var tmp = sim(alts[i],p)[0]; // FIXME consider more than one result
 				if( tmp_s === null ){
 					tmp_s = tmp.s;
 					tmp_p = tmp.p;
@@ -2394,7 +2418,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 						'(2)\tstate:\t'+tmp.s+'\n\tstep:\t'+tmp.p+'\n'), ast );
 				}
 			}
-			return { s : tmp_s , p : tmp_p };
+			return [{ s : tmp_s , p : tmp_p }];
 		}
 		
 		if( p.type === types.AlternativeType ){
@@ -2413,6 +2437,15 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 				'step:\t'+p, ast );
 		}
 		
+		if( p.type === types.IntersectionType ){
+			var alts = p.inner();
+			var w = [];
+			for( var i=0; i<alts.length; ++i ){
+				w = w.concat( sim(s,alts[i]) );
+			}
+			return w;
+		}
+		
 		var pp = unAll( p, false, true );
 		
 		assert( pp.type === types.RelyType ||
@@ -2425,7 +2458,7 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 		assert( next.type === types.GuaranteeType ||
 			('Expecting GuaranteeType, got: '+next.type), ast);
 		
-		return { s : next.guarantee() , p : next.rely() };		
+		return [{ s : next.guarantee() , p : next.rely() }];		
 	}
 	
 	var work = [];
@@ -2443,12 +2476,16 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 		var _s = state[0];
 		var _a = state[1];
 		var _b = state[2];
-		
+
 		var l = sim(_s,_a);
-		work.push( [l.s,l.p,_b] );
+		for(var i=0;i<l.length;++i){
+			work.push( [ l[i].s, l[i].p, _b ] );
+		}
 			
 		var r = sim(_s,_b);
-		work.push( [r.s,_a,r.p] );
+		for(var i=0;i<r.length;++i){
+			work.push( [ r[i].s, _a, r[i].p ] );
+		}
 		
 		// This is useful to safeguard against different JS implementations...
 		// more for debug than requirement of the algorhtm.
