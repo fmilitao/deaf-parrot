@@ -2202,17 +2202,23 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 	var visited = new Visited();
 	
 	/**
+	 * Checks if 'p' accepts 's' with resulting guarantee of 'm'.
 	 * @param 's' - initial state
 	 * @param 'p' - protocol
 	 * @param 'm' - state to match
 	 * @return residual protocol of 'p'
 	 */
 	var simM = function( s, p, m ){
+
+//console.log('simM: '+s+' , '+p+' , '+m);
+
 		p = unAll(p,false,true);
 		
 		if( p.type === types.NoneType ){
 			assert( equals( s, m ) ||
-						('[Protocol Conformance]: '+s+' not <: '+m) );
+						('[Protocol Conformance]: '+s+
+						' != '+m+
+						' while matching on: '+p) );
 			return p;
 		}
 
@@ -2256,6 +2262,7 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 				'step:\t'+p, ast );
 		}
 		
+		// only needs to have one choice that matches
 		if( p.type === types.IntersectionType ){
 			var alts = p.inner();
 			for( var i=0; i<alts.length; ++i ){
@@ -2272,7 +2279,7 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 		}
 
 		// base case
-		var pp = unAll( p, false, true );
+		var pp = p; //unAll( p, false, true );
 		
 		assert( pp.type === types.RelyType ||
 			('Expecting RelyType, got: '+pp.type+'\n'+pp), ast);
@@ -2292,15 +2299,22 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 		return next.rely();
 	}
 	
-	// returns {state, protocol, other}
+	/**
+	 * @param 's' state
+	 * @param 'p' protocol
+	 * @param 'o' protocol to match with result of moving p with s.
+	 * @returns the next state of moving both protocols with 's'.
+	 */
 	var simP = function( s, p, o ){
-//debugger
+
+//console.log('\nsimP: '+s+' , '+p+' , '+o);
+
 		// unfold recursive types, etc.
 		p = unAll(p,false,true);
 
 		// first protocol
 		if( p.type === types.NoneType ){
-			// 'o'ther must have same state
+			// 'o'ther must accept same state
 			var m = simM( s, o, s );
 			return [{ state : s, protocol: p, other: m }];
 		}
@@ -2313,6 +2327,7 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 			var alts = s.inner();
 			// note that the resulting state must match, up to subtyping
 			// i.e. in case of alternatives these should be merged
+			// for now equality is enough
 			for( var i=0; i<alts.length; ++i ){
 				var tmp = simP( alts[i], p, o )[0]; // FIXME ?
 				if( tmp_s === null ){
@@ -2320,7 +2335,6 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 					tmp_p = tmp.protocol;
 					tmp_m = tmp.other;
 				}else{
-					//for now equality is enough
 					assert( ( equals( tmp_s, tmp.state ) && 
 									equals( tmp_p, tmp.protocol ) &&
 										equals( tmp_m, tmp.other ) ) ||
@@ -2350,6 +2364,7 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 				'step:\t'+p, ast );
 		}
 		
+		// all alternatives must work
 		if( p.type === types.IntersectionType ){
 			var alts = p.inner();
 			var w = [];
@@ -2360,21 +2375,23 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 		}
 
 		// base case
-		var pp = unAll( p, false, true );
+		assert( p.type === types.RelyType ||
+			('Expecting RelyType, got: '+p.type+'\n'+pp), ast);
+
+		// ensure A <: B where state is A and protocol B => C		
+		assert( subtypeOf( s, p.rely() ) ||
+			('Invalid Step: '+s+' VS '+p.rely()), ast );
 		
-		assert( pp.type === types.RelyType ||
-			('Expecting RelyType, got: '+pp.type+'\n'+pp), ast);
-		
-		assert( subtypeOf( s, pp.rely() ) ||
-			('Invalid Step: '+s+' VS '+pp.rely()), ast );
-		
-		var next = pp.guarantee();
+		var next = p.guarantee();
 		assert( next.type === types.GuaranteeType ||
 			('Expecting GuaranteeType, got: '+next.type), ast);
 
+		// check 'o' accepts the guaranteed type when used with 's'
 		var m = simM( s, o, next.guarantee() );
 		return [{ state: next.guarantee(), protocol: next.rely(), other: m }];
 	}
+	
+	// --------- WORK CYCLE --------- // 
 	
 	var work = [];
 	work.push( [s,p,a,b] ); // initial configuration
@@ -2387,7 +2404,8 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 			continue;
 
 		visited.push( state );
-		
+
+		// < _s , _p <<>> _a || _b >
 		var _s = state[0];
 		var _p = state[1];
 		var _a = state[2];
@@ -2406,6 +2424,10 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 		}
 		
 		// 3. step on _p matched by either _a or _b
+//FIXME A&B may be matched by _a or _b, but not both independently...
+//FIXME this appears to break the structure of the algorithm?!?!
+//FIXME problem is that A&B <: A and... and B, but that B may be from
+//FIXME only matched from elsewhere...
 		try{
 			// 3.a) attempt with _a
 			var q = simP( _s, _p, _a );
@@ -2447,22 +2469,21 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 
 		// now state
 		if( s.type === types.AlternativeType ){
-			var tmp_s = null;
-			var tmp_p = null;
+			var base = null;
 			var alts = s.inner();
 			for( var i=0;i<alts.length; ++i ){
-				var tmp = sim(alts[i],p)[0]; // FIXME consider more than one result
-				if( tmp_s === null ){
-					tmp_s = tmp.s;
-					tmp_p = tmp.p;
-				}else{
-					assert( (equals( tmp_s, tmp.s ) && equals( tmp_p, tmp.p )) ||
+				var tmp = sim(alts[i],p);
+				if( base === null ){
+					base = tmp[0];
+				}
+				for( var j=0;j<tmp.length;++j ){
+					assert( (equals( base.s, tmp[j].s ) && equals( base.p, tmp[j].p )) ||
 						('[Protocol Conformance] Alternatives mimatch.\n'+
-						'(1)\tstate:\t'+tmp_s+'\n\tstep:\t'+tmp_p+'\n'+
-						'(2)\tstate:\t'+tmp.s+'\n\tstep:\t'+tmp.p+'\n'), ast );
+						'(1)\tstate:\t'+base.s+'\n\tstep:\t'+base.p+'\n'+
+						'(2)\tstate:\t'+tmp[j].s+'\n\tstep:\t'+tmp[j].p+'\n'), ast );
 				}
 			}
-			return [{ s : tmp_s , p : tmp_p }];
+			return [{ s : base.s , p : base.p }];
 		}
 		
 		if( p.type === types.AlternativeType ){
