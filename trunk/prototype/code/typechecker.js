@@ -2309,7 +2309,7 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 
 //console.log('\nsimP: '+s+' , '+p+' , '+o);
 
-		// unfold recursive types, etc.
+		// unfold definitions
 		p = unAll(p,false,true);
 
 		// first protocol
@@ -2321,29 +2321,26 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 
 		// now state
 		if( s.type === types.AlternativeType ){
-			var tmp_s = null;
-			var tmp_p = null;
-			var tmp_m = null;
+			var base = null;
 			var alts = s.inner();
 			// note that the resulting state must match, up to subtyping
 			// i.e. in case of alternatives these should be merged
 			// for now equality is enough
 			for( var i=0; i<alts.length; ++i ){
-				var tmp = simP( alts[i], p, o )[0]; // FIXME ?
-				if( tmp_s === null ){
-					tmp_s = tmp.state;
-					tmp_p = tmp.protocol;
-					tmp_m = tmp.other;
-				}else{
-					assert( ( equals( tmp_s, tmp.state ) && 
-									equals( tmp_p, tmp.protocol ) &&
-										equals( tmp_m, tmp.other ) ) ||
+				var tmp = simP( alts[i], p, o );
+				if( base === null ){
+					base = tmp[0];
+				}
+				for( var j=0; j<tmp.length;++j ){
+					assert( ( equals( base.state, tmp[j].state ) && 
+									equals( base.protocol, tmp[j].protocol ) &&
+										equals( base.other, tmp[j].other ) ) ||
 						('[Protocol Conformance] Alternatives mismatch'), ast );
 				}
 			}
 			// now match on the other one.
 			//var m = simM( s, o, tmp_s );
-			return [{ state : tmp_s, protocol: tmp_p, other: tmp_m }];
+			return [{ state : base.state, protocol: base.protocol, other: base.other }];
 		}
 		
 		// tries to find one alternative that works
@@ -2373,6 +2370,8 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 			}
 			return w;
 		}
+
+//console.debug( work );
 
 		// base case
 		assert( p.type === types.RelyType ||
@@ -2449,7 +2448,8 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 		assert( max_visited-- > 0 || 'ERROR: MAX VISITED', ast);
 	}
 
-	//TODO remember possibility of extending a step.
+	//TODO remember possibility of extending a step, once the simulated protocol
+	// ends and we want to continue to extend it beyond that point.
 
 	return visited.array;
 };
