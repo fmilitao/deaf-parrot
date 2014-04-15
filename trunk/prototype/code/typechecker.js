@@ -2157,8 +2157,6 @@ var getInitialState = function( p ){
 var checkProtocolConformance = function( s, a, b, ast ){
 	var initial = getInitialState(s);
 	
-	 // XXX hack to expose 'visited'
-	 // XXX too much duplicated code.
 	if( initial === undefined ){
 		hack_info = conformanceStateProtocol(s,a,b,ast);
 	}else{
@@ -2179,10 +2177,11 @@ var Visited = function(){
 		
 		for( var i=0; i<visited.length; ++i ){
 			var tmp = visited[i];
-// XXX warning, subtyping on the state only?
+// does using subtyping make sense anywhere else?
 			if( subtypeOf(s,tmp[0]) &&
 					equals(p,tmp[1]) && 
 					equals(a,tmp[2]) &&
+// intentional: even when b/tmp[3] are left undefined, this is still true.
 					equals(b,tmp[3]) )
 				return true;
 		}
@@ -2209,12 +2208,13 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 	 * @return residual protocol of 'p'
 	 */
 	var simM = function( s, p, m ){
+		var n = m.guarantee();
 		// unfold definition
 		p = unAll(p,false,true);
 		
 		if( p.type === types.NoneType ){
-			assert( equals( s, m ) ||
-				('[Protocol Conformance]: '+s+' != '+m+', mismatch '+p) );
+			assert( equals( s, n ) ||
+				('[Protocol Conformance]: '+s+' != '+n+', mismatch '+p) );
 			return p;
 		}
 
@@ -2284,8 +2284,20 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 
 		// note that we are comparing => A with => B, such that A <: B
 		// i.e. only the resulting
-		assert( subtypeOf( next.guarantee(), m ) ||
-			('[Protocol Conformance]: '+next.guarantee()+' not <: '+m), ast );
+//debugger
+		if( !subtypeOf( next.guarantee(), n ) ){
+				//debugger
+			if( next.guarantee().type === types.NoneType &&
+					next.rely().type === types.NoneType ){
+//FIXME check recovery!
+//				debugger
+//FIXME signal no more protocol-protocol checking
+				return m.rely();
+			}else{
+				assert( ('[Protocol Conformance]: '+next.guarantee()
+					+' not <: '+n), ast );
+			}
+		}
 
 		return next.rely();
 	}
@@ -2366,7 +2378,7 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 
 		// base case
 		assert( p.type === types.RelyType ||
-			('Expecting RelyType, got: '+p.type+'\n'+pp), ast);
+			('Expecting RelyType, got: '+p.type+'\n'+p), ast);
 
 		// ensure A <: B where state is A and protocol B => C		
 		assert( subtypeOf( s, p.rely() ) ||
@@ -2377,7 +2389,7 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 			('Expecting GuaranteeType, got: '+next.type), ast);
 
 		// check 'o' accepts the guaranteed type when used with 's'
-		var m = simM( s, o, next.guarantee() );
+		var m = simM( s, o, next );
 		return { state: next.guarantee(), protocol: next.rely(), other: m };
 	}
 	
@@ -2401,6 +2413,9 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 		var _a = state[2];
 		var _b = state[3];
 
+		_a = unAll(_a,false,true);
+		_b = unAll(_b,false,true);
+		_p = unAll(_p,false,true);
 		// 1. step on _a matched by _p
 		if( _a.type === types.IntersectionType ){
 			var alts = _a.inner();
@@ -2463,11 +2478,11 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 	var visited = new Visited();
 	var max_visited = 100; // safeguard against 'equals' bugs, bounds execution.	
 	
-	var sim = function(s,p){
-		// unfold recursive types, etc.
+	var step = function(s,p){
+		// unfold definitions
 		p = unAll(p,false,true);
 		
-		// first protocol
+		// unchanged
 		if( p.type === types.NoneType )
 			return [{ s : s , p : p }];
 
@@ -2475,14 +2490,14 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 		if( s.type === types.AlternativeType ){
 			var base = null;
 			var alts = s.inner();
-			for( var i=0;i<alts.length; ++i ){
-				var tmp = sim(alts[i],p);
+			for( var i=0; i<alts.length; ++i ){
+				var tmp = step(alts[i],p);
 				if( base === null ){
 					base = tmp[0];
 				}
-				for( var j=0;j<tmp.length;++j ){
+				for( var j=0; j<tmp.length; ++j ){
 					assert( (equals( base.s, tmp[j].s ) && equals( base.p, tmp[j].p )) ||
-						('[Protocol Conformance] Alternatives mimatch.\n'+
+						('Alternatives mimatch.\n'+
 						'(1)\tstate:\t'+base.s+'\n\tstep:\t'+base.p+'\n'+
 						'(2)\tstate:\t'+tmp[j].s+'\n\tstep:\t'+tmp[j].p+'\n'), ast );
 				}
@@ -2494,36 +2509,32 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 			var alts = p.inner();
 			for( var i=0; i<alts.length; ++i ){
 				try{
-					return sim(s,alts[i]);
+					return step(s,alts[i]);
 				}catch(e){
-					// assume it is an assertion error, continue to try with
-					// some other alternative
+					// try with another alternative
 					continue;
 				}
 			}
-			assert( '[Protocol Conformance] No matching alternative.\n'+
-				'state:\t'+s+'\n'+
-				'step:\t'+p, ast );
+			assert( 'No matching alternative:\n'+
+				'state:\t'+s+'\n'+'step:\t'+p, ast );
 		}
 		
 		if( p.type === types.IntersectionType ){
 			var alts = p.inner();
 			var w = [];
 			for( var i=0; i<alts.length; ++i ){
-				w = w.concat( sim(s,alts[i]) );
+				w = w.concat( step(s,alts[i]) );
 			}
 			return w;
 		}
 		
-		var pp = unAll( p, false, true );
+		assert( p.type === types.RelyType ||
+			('Expecting RelyType, got: '+p.type+'\n'+p), ast);
 		
-		assert( pp.type === types.RelyType ||
-			('Expecting RelyType, got: '+pp.type+'\n'+pp), ast);
+		assert( subtypeOf( s, p.rely() ) ||
+			('Expecting: '+p.rely()+' got: '+s), ast );
 		
-		assert( subtypeOf( s, pp.rely() ) ||
-			('Invalid Step: '+s+' VS '+pp.rely()), ast );
-		
-		var next = pp.guarantee();
+		var next = p.guarantee();
 		assert( next.type === types.GuaranteeType ||
 			('Expecting GuaranteeType, got: '+next.type), ast);
 		
@@ -2546,12 +2557,12 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 		var _a = state[1];
 		var _b = state[2];
 
-		var l = sim(_s,_a);
+		var l = step(_s,_a);
 		for(var i=0;i<l.length;++i){
 			work.push( [ l[i].s, l[i].p, _b ] );
 		}
 			
-		var r = sim(_s,_b);
+		var r = step(_s,_b);
 		for(var i=0;i<r.length;++i){
 			work.push( [ r[i].s, _a, r[i].p ] );
 		}
