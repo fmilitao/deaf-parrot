@@ -1,5 +1,3 @@
-//FIXME: work in progress
-//FIXME: gargabe collector used/not on different alternatives
 
 typedef Nil   <p> = rw p (Nil#[])
 typedef NilP  <p> = Nil[p] => Nil[p] ; NilP[p]
@@ -62,8 +60,8 @@ let newSpaghetti = fun( _ : [] ).
 						head := < t, n :: ( NodeP[t] (+) NilP[t] ) > ;
 						End#{} :: GC // This is a limitation of the type checker.
 						// we require stacking GC to make sure this branch uses that
-						// type in its body, so that all branches have the same
-						// use of state.
+						// cap in its body, so that all branches have the same
+						// use of state. (pending fix to not require this...)
 				| Node#z ->
 					// Although we pop the contents, we must leave the shared state
 					// with the same type that it had before. For this, we must
