@@ -2164,6 +2164,263 @@ var checkProtocolConformance = function( s, a, b, ast ){
 	}
 };
 
+	/**
+	 * Checks if 'p' accepts 's' with resulting guarantee of 'm'.
+	 * @param 's' - initial state
+	 * @param 'p' - protocol
+	 * @param 'm' - state to match
+	 * @return residual protocol of 'p'
+	 */
+	var simM = function( s, p, m, ast ){
+		
+		// unfold definition
+		p = unAll(p,false,true);
+		
+		if( p.type === types.NoneType ){
+			assert( equals( s, m ) ||
+				('Mismatch: '+s+' != '+m+', on '+p) , ast );
+			return p;
+		}
+
+		if( s.type === types.AlternativeType ){
+			var tmp_s = null;
+			var tmp_p = null;
+			var alts = s.inner();
+
+			for( var i=0; i<alts.length; ++i ){
+				var tmp = simM( alts[i], p, m, ast );
+				if( tmp_s === null ){
+					tmp_s = tmp.s;
+					tmp_p = tmp.p;
+				}else{
+					assert( (equals( tmp_s, tmp.s ) && equals( tmp_p, tmp.p )) ||
+						('Alternatives mimatch.\n'+
+						'(1)\tstate:\t'+tmp_s+'\n\tstep:\t'+tmp_p+'\n'+
+						'(2)\tstate:\t'+tmp.s+'\n\tstep:\t'+tmp.p+'\n'), ast );
+				}
+			}
+
+			return tmp_p;
+		}
+		
+		// attempts alternative that works
+		if( p.type === types.AlternativeType ){
+			var alts = p.inner();
+			for( var i=0; i<alts.length; ++i ){
+				try{
+					return simM( s, alts[i], m, ast );
+				}catch(e){
+					continue;
+				}
+			}
+			assert( 'No matching alternative.\n'+
+				'state:\t'+s+'\n'+
+				'match:\t'+m+'\n'+
+				'step:\t'+p, ast );
+		}
+		
+		// only needs one choice that matches
+		if( p.type === types.IntersectionType ){
+			var alts = p.inner();
+			for( var i=0; i<alts.length; ++i ){
+				try{
+					return simM( s, alts[i], m, ast );
+				}catch(e){
+					continue;
+				}
+			}
+			assert( '[Protocol Conformance] No matching choice.\n'+
+				'state:\t'+s+'\n'+
+				'match:\t'+m+'\n'+
+				'step:\t'+p, ast );
+		}
+
+		// base case
+		assert( p.type === types.RelyType ||
+			('Expecting RelyType, got: '+p.type+'\n'+pp), ast);
+		
+		assert( subtypeOf( s, p.rely() ) ||
+			('Invalid Step: '+s+' VS '+p.rely()), ast );
+		
+		var next = p.guarantee();
+		assert( next.type === types.GuaranteeType ||
+			('Expecting GuaranteeType, got: '+next.type), ast);
+
+		// note that we are comparing => A with => B, such that A <: B
+		// i.e. only the resulting
+
+		var g = next.guarantee();
+
+		// we recovered ownership, but the other continues... OK!
+		// the other ended, but we didn't OK
+		if( m.type === types.NoneType )
+			return m; // pretend it also ended
+		
+		// only check, this protocol did not end
+		if( g.type !== types.NoneType )
+			assert( subtypeOf( g, m ) || ('Incompatible: '+g+' vs '+m), ast );
+	
+		return next.rely();
+	}
+	
+	/**
+	 * @param 's' state
+	 * @param 'p' protocol
+	 * @param 'o' protocol to match with result of moving p with s.
+	 * @returns the next state of moving both protocols with 's'.
+	 */
+	var simP = function( s, p, o, ast ){
+
+		// unfold definitions
+		p = unAll(p,false,true);
+
+		// unchanged
+		if( p.type === types.NoneType ){
+			// nothing to be matched
+			return [{ state : s, protocol: p, other: o }];
+		}
+
+		// now state
+		if( s.type === types.AlternativeType ){
+			var base = null;
+			var alts = s.inner();
+			// note that the resulting state must match, up to subtyping
+			// i.e. in case of alternatives these should be merged
+			// for now equality is enough
+			for( var i=0; i<alts.length; ++i ){
+				var tmp = simP( alts[i], p, o, ast );
+				if( base === null ){
+					base = tmp[0];
+				}
+				for( var j=0; j<tmp.length; ++j ){
+					assert( ( equals( base.state, tmp[j].state ) && 
+							equals( base.protocol, tmp[j].protocol ) &&
+							equals( base.other, tmp[j].other ) ) ||
+						('Alternatives mismatch'), ast );
+				}
+			}
+			return { state : base.state, protocol: base.protocol, other: base.other };
+		}
+		
+		// tries to find one alternative that works
+		if( p.type === types.AlternativeType ){
+			var alts = p.inner();
+			for( var i=0; i<alts.length; ++i ){
+				try{
+					return simP( s, alts[i], o, ast );
+				}catch(e){
+					// assume it is an assertion error, continue to try with
+					// some other alternative
+					continue;
+				}
+			}
+			assert( 'No matching alternative on:\n'+
+				'state:\t'+s+'\n prot.:\t'+o+'\n step:\t'+p, ast );
+		}
+		
+		// all alternatives must work
+		if( p.type === types.IntersectionType ){
+			var alts = p.inner();
+			var w = [];
+			for( var i=0; i<alts.length; ++i ){
+				w = w.concat( simP( s, alts[i], o, ast ) );
+			}
+			return w;
+		}
+
+		// base case
+		assert( p.type === types.RelyType ||
+			('Expecting RelyType, got: '+p.type+'\n'+p), ast);
+
+		// ensure A <: B where state is A and protocol B => C		
+		assert( subtypeOf( s, p.rely() ) ||
+			('Invalid Step: '+s+' VS '+p.rely()), ast );
+		
+		var next = p.guarantee();
+		assert( next.type === types.GuaranteeType ||
+			('Expecting GuaranteeType, got: '+next.type), ast);
+
+		// check 'o' accepts the guaranteed type when used with 's'
+		// attempts to match with 'o'.
+		
+		// if I recovered ownership and other did not: OK, will continue without me
+		// this should then be reflected in none on my protocol.
+		 
+//console.debug('\nsimP: '+s+' >> '+p+' match: '+o);
+//console.debug('simM: '+s+' >> '+next.guarantee()+' with '+o);
+		var m = simM( s, o, next.guarantee(), ast );
+		
+		return [{ state: next.guarantee(), protocol: next.rely(), other: m }];
+	}
+	
+	/**
+	 * Does single step on protocol 'p' with state 's'. Result is an array with
+	 * all possible steps that can be taken. Each entry with object to label
+	 * the next state as 's' and the residual protocol as 'p'.
+	 */
+	var step = function(s,p, ast){ //TODO merge with simP... avoid duplication
+		// unfold definitions
+		p = unAll(p,false,true);
+		
+		// unchanged
+		if( p.type === types.NoneType )
+			return [{ state : s , protocol : p }];
+
+		// now state
+		if( s.type === types.AlternativeType ){
+			var base = null;
+			var alts = s.inner();
+			for( var i=0; i<alts.length; ++i ){
+				var tmp = step(alts[i],p, ast);
+				if( base === null ){
+					base = tmp[0];
+				}
+				for( var j=0; j<tmp.length; ++j ){
+					assert( (equals( base.state, tmp[j].state ) &&
+								equals( base.protocol, tmp[j].protocol )) ||
+						('Alternatives mimatch.\n'+
+						'(1)\tstate:\t'+base.state+'\n\tstep:\t'+base.protocol+'\n'+
+						'(2)\tstate:\t'+tmp[j].state+'\n\tstep:\t'+tmp[j].protocol+'\n'), ast );
+				}
+			}
+			return [{ state : base.state , protocol : base.protocol }];
+		}
+		
+		if( p.type === types.AlternativeType ){
+			var alts = p.inner();
+			for( var i=0; i<alts.length; ++i ){
+				try{
+					return step(s,alts[i], ast);
+				}catch(e){
+					continue; // try with another alternative
+				}
+			}
+			assert( 'No matching alternative:\n'+
+				'state:\t'+s+'\n'+'step:\t'+p, ast );
+		}
+		
+		if( p.type === types.IntersectionType ){
+			var alts = p.inner();
+			var w = [];
+			for( var i=0; i<alts.length; ++i ){
+				w = w.concat( step(s,alts[i], ast) );
+			}
+			return w;
+		}
+		
+		assert( p.type === types.RelyType ||
+			('Expecting RelyType, got: '+p.type+'\n'+p), ast);
+		
+		assert( subtypeOf( s, p.rely() ) ||
+			('Expecting: '+p.rely()+' got: '+s), ast );
+		
+		var next = p.guarantee();
+		assert( next.type === types.GuaranteeType ||
+			('Expecting GuaranteeType, got: '+next.type), ast);
+		
+		return [{ state : next.guarantee() , protocol : next.rely() }];		
+	}
+
 var Visited = function(){
 	var visited = [];
 	
@@ -2200,268 +2457,69 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 	var max_visited = 100; // safeguard against 'equals' bugs, bounds execution.	
 	var visited = new Visited();
 	
-	/**
-	 * Checks if 'p' accepts 's' with resulting guarantee of 'm'.
-	 * @param 's' - initial state
-	 * @param 'p' - protocol
-	 * @param 'm' - state to match
-	 * @return residual protocol of 'p'
-	 */
-	var simM = function( s, p, m ){
-		var n = m.guarantee();
-		// unfold definition
-		p = unAll(p,false,true);
-		
-		if( p.type === types.NoneType ){
-			assert( equals( s, n ) ||
-				('[Protocol Conformance]: '+s+' != '+n+', mismatch '+p) );
-			return p;
-		}
-
-		if( s.type === types.AlternativeType ){
-			var tmp_s = null;
-			var tmp_p = null;
-			var alts = s.inner();
-
-			for( var i=0; i<alts.length; ++i ){
-				var tmp = simM( alts[i], p, m );
-				if( tmp_s === null ){
-					tmp_s = tmp.s;
-					tmp_p = tmp.p;
-				}else{
-					assert( (equals( tmp_s, tmp.s ) && equals( tmp_p, tmp.p )) ||
-						('[Protocol Conformance] Alternatives mimatch.\n'+
-						'(1)\tstate:\t'+tmp_s+'\n\tstep:\t'+tmp_p+'\n'+
-						'(2)\tstate:\t'+tmp.s+'\n\tstep:\t'+tmp.p+'\n'), ast );
-				}
-			}
-
-			return tmp_p;
-		}
-		
-		// attempts alternative that works
-		if( p.type === types.AlternativeType ){
-			var alts = p.inner();
-			for( var i=0; i<alts.length; ++i ){
-				try{
-					return simM( s, alts[i], m );
-				}catch(e){
-					continue;
-				}
-			}
-			assert( '[Protocol Conformance] No matching alternative.\n'+
-				'state:\t'+s+'\n'+
-				'match:\t'+m+'\n'+
-				'step:\t'+p, ast );
-		}
-		
-		// only needs one choice that matches
-		if( p.type === types.IntersectionType ){
-			var alts = p.inner();
-			for( var i=0; i<alts.length; ++i ){
-				try{
-					return simM( s, alts[i], m );
-				}catch(e){
-					continue;
-				}
-			}
-			assert( '[Protocol Conformance] No matching choice.\n'+
-				'state:\t'+s+'\n'+
-				'match:\t'+m+'\n'+
-				'step:\t'+p, ast );
-		}
-
-		// base case
-		assert( p.type === types.RelyType ||
-			('Expecting RelyType, got: '+p.type+'\n'+pp), ast);
-		
-		assert( subtypeOf( s, p.rely() ) ||
-			('Invalid Step: '+s+' VS '+p.rely()), ast );
-		
-		var next = p.guarantee();
-		assert( next.type === types.GuaranteeType ||
-			('Expecting GuaranteeType, got: '+next.type), ast);
-
-		// note that we are comparing => A with => B, such that A <: B
-		// i.e. only the resulting
-//debugger
-		if( !subtypeOf( next.guarantee(), n ) ){
-				//debugger
-			if( next.guarantee().type === types.NoneType &&
-					next.rely().type === types.NoneType ){
-//FIXME check recovery!
-//				debugger
-//FIXME signal no more protocol-protocol checking
-				return m.rely();
-			}else{
-				assert( ('[Protocol Conformance]: '+next.guarantee()
-					+' not <: '+n), ast );
-			}
-		}
-
-		return next.rely();
-	}
-	
-	/**
-	 * @param 's' state
-	 * @param 'p' protocol
-	 * @param 'o' protocol to match with result of moving p with s.
-	 * @returns the next state of moving both protocols with 's'.
-	 */
-	var simP = function( s, p, o ){
-
-//console.log('\nsimP: '+s+' , '+p+' , '+o);
-
-		// unfold definitions
-		p = unAll(p,false,true);
-
-		// first protocol
-		if( p.type === types.NoneType ){
-			//var m = simM( s, o, s );
-			// unchanged
-			return { state : s, protocol: p, other: o };
-		}
-
-		// now state
-		if( s.type === types.AlternativeType ){
-			var base = null;
-			var alts = s.inner();
-			// note that the resulting state must match, up to subtyping
-			// i.e. in case of alternatives these should be merged
-			// for now equality is enough
-			for( var i=0; i<alts.length; ++i ){
-				var tmp = simP( alts[i], p, o );
-				if( base === null ){
-					base = tmp;
-				} else {
-					assert( ( equals( base.state, tmp.state ) && 
-									equals( base.protocol, tmp.protocol ) &&
-										equals( base.other, tmp.other ) ) ||
-						('[Protocol Conformance] Alternatives mismatch'), ast );
-				}
-			}
-			// now match on the other one.
-			//var m = simM( s, o, tmp_s );
-			return { state : base.state, protocol: base.protocol, other: base.other };
-		}
-		
-		// tries to find one alternative that works
-		if( p.type === types.AlternativeType ){
-			var alts = p.inner();
-			for( var i=0; i<alts.length; ++i ){
-				try{
-					return simP( s, alts[i], o );
-				}catch(e){
-					// assume it is an assertion error, continue to try with
-					// some other alternative
-					continue;
-				}
-			}
-			assert( '[Protocol Conformance] No matching alternative.\n'+
-				'state:\t'+s+'\n'+
-				'prot.:\t'+o+'\n'+
-				'step:\t'+p, ast );
-		}
-		
-		/*
-		// all alternatives must work
-		if( p.type === types.IntersectionType ){
-			var alts = p.inner();
-			var w = [];
-			for( var i=0; i<alts.length; ++i ){
-				w = w.concat( simP( s, alts[i], o ) );
-			}
-			return w;
-		}*/
-
-//console.debug( work );
-
-		// base case
-		assert( p.type === types.RelyType ||
-			('Expecting RelyType, got: '+p.type+'\n'+p), ast);
-
-		// ensure A <: B where state is A and protocol B => C		
-		assert( subtypeOf( s, p.rely() ) ||
-			('Invalid Step: '+s+' VS '+p.rely()), ast );
-		
-		var next = p.guarantee();
-		assert( next.type === types.GuaranteeType ||
-			('Expecting GuaranteeType, got: '+next.type), ast);
-
-		// check 'o' accepts the guaranteed type when used with 's'
-		var m = simM( s, o, next );
-		return { state: next.guarantee(), protocol: next.rely(), other: m };
-	}
-	
-	// --------- WORK CYCLE --------- // 
-	
 	var work = [];
 	work.push( [s,p,a,b] ); // initial configuration
-//debugger
+
 	while( work.length > 0 ){
 		var state = work.pop();
 
-		// already done
 		if( visited.contains( state ) )
 			continue;
 
 		visited.push( state );
 
-		// < _s , _p <<>> _a || _b >
-		var _s = state[0];
-		var _p = state[1];
-		var _a = state[2];
-		var _b = state[3];
-
-		_a = unAll(_a,false,true);
-		_b = unAll(_b,false,true);
-		_p = unAll(_p,false,true);
-		// 1. step on _a matched by _p
-		if( _a.type === types.IntersectionType ){
-			var alts = _a.inner();
-			for( var i=0; i<alts.length; ++i ){
-				var l = simP( _s, alts[i], _p );
-				work.push( [ l.state, l.other, l.protocol, _b ] );
+		var S = state[0]; // state
+		var P = state[1]; // original protocol
+		var A = state[2]; // new protocol
+		var B = state[3]; // new protocol
+//debugger		
+		if( P.type === types.NoneType ){
+			// original protocol ended, just do regular State-Protocol check
+			var l = step( S, A, ast );
+			for( var i=0; i<l.length; ++i ){
+				work.push( [ l[i].state, P, l[i].protocol, B ] );
 			}
-		}else{
-			var l = simP( _s, _a, _p );
-			work.push( [ l.state, l.other, l.protocol, _b ] );
-		}
-
-		// 2. step on _b matched by _p
-		if( _b.type === types.IntersectionType ){
-			var alts = _b.inner();
-			for( var i=0; i<alts.length; ++i ){
-				var l = simP( _s, alts[i], _p );
-				work.push( [ l.state, l.other, _a, l.protocol ] );
+				
+			var r = step( S, B, ast );
+			for( var i=0; i<r.length; ++i ){
+				work.push( [ r[i].state, P, A, r[i].protocol ] );
 			}
-		}else{
-			var l = simP( _s, _b, _p );
-			work.push( [ l.state, l.other, _a, l.protocol ] );
-		}
 		
-		// 3. step on _p matched by either _a or _b
-		if( _p.type === types.IntersectionType ){
-			var alts = _p.inner();
-			for( var i=0; i<alts.length; ++i ){
+		}else{
+
+			// 1. step on A matched by P
+			var l = simP( S, A, P, ast );
+			for( var i=0; i<l.length; ++i ){
+				work.push( [ l[i].state, l[i].other, l[i].protocol, B ] );
+			}
+	
+			// 2. step on B matched by P
+			var r = simP( S, B, P, ast );
+			for( var i=0; i<r.length; ++i ){
+				work.push( [ r[i].state, r[i].other, A, r[i].protocol ] );
+			}
+			
+			// 3. step on P matched by either A or B
+			// unfold definitions in P to enable correct type inspection
+			P = unAll(P,false,true);
+			// tests intersections outside to ensure we can pick either A or B		
+			var Ps = P.type === types.IntersectionType ? P.inner() : [P];
+			for( var i=0; i<Ps.length; ++i ){
+				var o = null;
 				try{
-					var l = simP( _s, alts[i], _a );
-					work.push( [ l.state, l.protocol, l.other, _b ] );
+					o = simP( S, Ps[i], A, ast );
+					for( var j=0; j<o.length; ++j ){
+						work.push( [ o[j].state, o[j].protocol, o[j].other, B ] );
+					}
 				}catch(e){
-					var l = simP( _s, alts[i], _b );
-					work.push( [ l.state, l.protocol, _a, l.other ] );
+					var o = simP( S, Ps[i], B, ast );
+					for( var j=0; j<o.length; ++j ){
+						work.push( [ o[j].state, o[j].protocol, A, o[j].other ] );
+					}
 				}
 			}
-		}else{
-			try{
-				var l = simP( _s, _p, _a );
-				work.push( [ l.state, l.protocol, l.other, _b ] );
-			}catch(e){
-				var l = simP( _s, _p, _b );
-				work.push( [ l.state, l.protocol, _a, l.other ] );
-			}
-		}
 		
+		}
 		// This is useful to safeguard against different JS implementations...
 		// more for debug than requirement of the algorhtm.
 		assert( max_visited-- > 0 || 'ERROR: MAX VISITED', ast);
@@ -2469,77 +2527,16 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 
 	//TODO remember possibility of extending a step, once the simulated protocol
 	// ends and we want to continue to extend it beyond that point.
+	// Use 'null' to flag when returning to 'step' instead of sim.
 
 	return visited.array;
 };
+
 
 var conformanceStateProtocol = function( s, a, b, ast ){
 
 	var visited = new Visited();
 	var max_visited = 100; // safeguard against 'equals' bugs, bounds execution.	
-	
-	var step = function(s,p){
-		// unfold definitions
-		p = unAll(p,false,true);
-		
-		// unchanged
-		if( p.type === types.NoneType )
-			return [{ s : s , p : p }];
-
-		// now state
-		if( s.type === types.AlternativeType ){
-			var base = null;
-			var alts = s.inner();
-			for( var i=0; i<alts.length; ++i ){
-				var tmp = step(alts[i],p);
-				if( base === null ){
-					base = tmp[0];
-				}
-				for( var j=0; j<tmp.length; ++j ){
-					assert( (equals( base.s, tmp[j].s ) && equals( base.p, tmp[j].p )) ||
-						('Alternatives mimatch.\n'+
-						'(1)\tstate:\t'+base.s+'\n\tstep:\t'+base.p+'\n'+
-						'(2)\tstate:\t'+tmp[j].s+'\n\tstep:\t'+tmp[j].p+'\n'), ast );
-				}
-			}
-			return [{ s : base.s , p : base.p }];
-		}
-		
-		if( p.type === types.AlternativeType ){
-			var alts = p.inner();
-			for( var i=0; i<alts.length; ++i ){
-				try{
-					return step(s,alts[i]);
-				}catch(e){
-					// try with another alternative
-					continue;
-				}
-			}
-			assert( 'No matching alternative:\n'+
-				'state:\t'+s+'\n'+'step:\t'+p, ast );
-		}
-		
-		if( p.type === types.IntersectionType ){
-			var alts = p.inner();
-			var w = [];
-			for( var i=0; i<alts.length; ++i ){
-				w = w.concat( step(s,alts[i]) );
-			}
-			return w;
-		}
-		
-		assert( p.type === types.RelyType ||
-			('Expecting RelyType, got: '+p.type+'\n'+p), ast);
-		
-		assert( subtypeOf( s, p.rely() ) ||
-			('Expecting: '+p.rely()+' got: '+s), ast );
-		
-		var next = p.guarantee();
-		assert( next.type === types.GuaranteeType ||
-			('Expecting GuaranteeType, got: '+next.type), ast);
-		
-		return [{ s : next.guarantee() , p : next.rely() }];		
-	}
 	
 	var work = [];
 	work.push( [s,a,b] ); // initial configuration
@@ -2553,18 +2550,18 @@ var conformanceStateProtocol = function( s, a, b, ast ){
 
 		visited.push( state );
 
-		var _s = state[0];
-		var _a = state[1];
-		var _b = state[2];
+		var S = state[0];
+		var A = state[1];
+		var B = state[2];
 
-		var l = step(_s,_a);
-		for(var i=0;i<l.length;++i){
-			work.push( [ l[i].s, l[i].p, _b ] );
+		var l = step( S, A, ast);
+		for( var i=0; i<l.length; ++i ){
+			work.push( [ l[i].state, l[i].protocol, B ] );
 		}
 			
-		var r = step(_s,_b);
-		for(var i=0;i<r.length;++i){
-			work.push( [ r[i].s, _a, r[i].p ] );
+		var r = step( S, B, ast);
+		for( var i=0; i<r.length; ++i ){
+			work.push( [ r[i].state, A, r[i].protocol ] );
 		}
 		
 		// This is useful to safeguard against different JS implementations...
