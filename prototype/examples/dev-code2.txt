@@ -1,25 +1,20 @@
+//FIXME incomplete
 
-// useful states
-typedef H<t> = rw t (Held#[])
-typedef F<t> = rw t (Free#int)
+typedef A = int
+typedef B = boolean
 
-// sharing protocols
-typedef A<p> = ( H[p] => H[p] ; A[p] ) & ( H[p] => H[p] ; A[p] )
-typedef B<p> = ( H[p] => H[p] ; B[p] ) & ( H[p] => F[p] ; F[p] => none )
+typedef F<f,c> = rw f (Free#[]) * rw c []
+typedef R<f,c> = rw f  (Raw#[]) * rw c A
+typedef D<f,c> = rw f (Done#[]) * rw c B
 
-typedef P<l> = ( H[l] => H[l] ; P[l] ) & ( H[l] => F[l] ; F[l] => none )
-typedef P0<l> = ( H[l] => H[l] ; P0[l] ) (+) ( F[l] => none )
-typedef P1<l> = ( H[l] => F[l] )
+typedef Compressor <f,c> = ( F[f,c] => F[f,c] ; Compressor[f,c] ) (+) ( R[f,c] => D[f,c] )
 
-typedef P3<l> = ( H[l] => H[l] ; P3[l] ) (+) ( F[l] => H[l] ; H[l] => none )
+typedef Storer  <f,c> = ( F[f,c] => F[f,c] ; Storer[f,c]) (+) Storer_[f,c] 
+typedef Storer_ <f,c> = ( R[f,c] => R[f,c] ; Storer_[f,c] ) (+) ( D[f,c] => none )
 
-<t>fun( x : [] :: (H[t]) ).( share H[t] as (A[t]) || (A[t]) );
+typedef TMP  <f,c> = ( F[f,c] => F[f,c] ; TMP[f,c] ) (+) TMP_[f,c]
+typedef TMP_ <f,c> = ( R[f,c] => R[f,c] ; TMP_[f,c] ) & ( R[f,c] => D[f,c] ; D[f,c] => none )
 
-<t>fun( x : [] :: (H[t]) ).( share H[t] as (B[t]) || none );
-
-<t>fun( x : [] :: (P[t]) ).( share P[t] as (P0[t]) || (P1[t]) );
-
-<t>fun( x : [] :: (P[t]) ).( share P[t] as (P3[t]) || (P1[t]) )
-
+<f><c>fun( x : [] :: (TMP[f,c]) ).( share TMP[f,c] as (Storer[f,c]) || (Compressor[f,c]) )
 
 

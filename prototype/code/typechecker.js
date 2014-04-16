@@ -1656,6 +1656,8 @@ var TypeChecker = (function(AST,assertF){
 		if( subtypeOf(t2,t1) )
 			return t1;
 
+		//t1 = unAll(t1, false, true);
+		//t2 = unAll(t2, false, true);
 		// if bang mismatch, we need to not consider the sum as banged because
 		// our types cannot do a case on whether the type is liner or pure
 		var b1 = t1.type === types.BangType;
@@ -2263,6 +2265,32 @@ var checkProtocolConformance = function( s, a, b, ast ){
 		return next.rely();
 	}
 	
+	var mergeAlt = function(a,b){
+		if( equals(a,b) )
+			return a;
+		
+		var a_alt = a.type === types.AlternativeType;
+		var b_alt = b.type === types.AlternativeType;
+		
+		var res = new AlternativeType();
+		var tmp = ( a_alt ? a.inner() : [a] ).concat( 
+				( b_alt ? b.inner() : [b] ) );
+		
+		for( var i=0; i<tmp.length; ++i ){
+			var found = false;
+			for( var j=(i+1); j<tmp.length; ++j ){
+				if( equals(tmp[i], tmp[j])){
+					found = true;
+					break;
+				}
+			}
+			if( !found )
+				res.add( tmp[i] );
+		}
+		
+		return res;
+	}
+	
 	/**
 	 * @param 's' state
 	 * @param 'p' protocol
@@ -2284,19 +2312,28 @@ var checkProtocolConformance = function( s, a, b, ast ){
 		if( s.type === types.AlternativeType ){
 			var base = null;
 			var alts = s.inner();
-			// note that the resulting state must match, up to subtyping
-			// i.e. in case of alternatives these should be merged
-			// for now equality is enough
+
 			for( var i=0; i<alts.length; ++i ){
 				var tmp = simP( alts[i], p, o, ast );
 				if( base === null ){
 					base = tmp[0];
 				}
+
 				for( var j=0; j<tmp.length; ++j ){
-					assert( ( equals( base.state, tmp[j].state ) && 
+					// merge using alternatives
+					base.state = mergeAlt( base.state, tmp[j].state );
+					base.protocol = mergeAlt( base.protocol, tmp[j].protocol );
+					base.other = mergeAlt( base.other, tmp[j].other );
+					/*
+					if( !( equals( base.state, tmp[j].state ) && 
 							equals( base.protocol, tmp[j].protocol ) &&
-							equals( base.other, tmp[j].other ) ) ||
-						('Alternatives mismatch'), ast );
+							equals( base.other, tmp[j].other ) ) ){
+								debugger
+						assert( ('Alternatives mismatch:'+
+							'\nstate: '+base.state+' '+tmp[j].state+
+							'\nprotocol: '+base.protocol+' '+tmp[j].protocol+
+							'\nmatch: '+base.other+' '+tmp[j].other), ast );
+					}*/
 				}
 			}
 			return { state : base.state, protocol: base.protocol, other: base.other };
@@ -2315,7 +2352,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				}
 			}
 			assert( 'No matching alternative on:\n'+
-				'state:\t'+s+'\n prot.:\t'+o+'\n step:\t'+p, ast );
+				'state:\t'+s+'\nmatch:\t'+o+'\nprot.:\t'+p, ast );
 		}
 		
 		// all alternatives must work
@@ -2472,7 +2509,7 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 		var P = state[1]; // original protocol
 		var A = state[2]; // new protocol
 		var B = state[3]; // new protocol
-//debugger		
+	
 		if( P.type === types.NoneType ){
 			// original protocol ended, just do regular State-Protocol check
 			var l = step( S, A, ast );
