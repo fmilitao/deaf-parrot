@@ -1,5 +1,3 @@
-//FIXME INCOMPLETE
-
 // Shared Stack example.
 // The stack implementation is in the Old Examples tab. In here we assume such
 // type and proceed to share it.
@@ -23,8 +21,10 @@ fun( newStack : Stack ).
 				share E as (P[NE,E]) || (P[NE,E]);
 				// continued sharing...
 				share (P[NE,E]) as (P[NE,E]) || (P[NE,E]);
-				0
-				//TODO
+				"OK"
+				// This example is just to show that the splits are legal
+				// and the protocol conformance tables. Actual client code using
+				// these protocols can also be written if you want to...
 			end
 		end
 	end

@@ -1,0 +1,25 @@
+
+// useful states
+typedef H<t> = rw t (Held#[])
+typedef F<t> = rw t (Free#int)
+
+// sharing protocols
+typedef A<p> = ( H[p] => H[p] ; A[p] ) & ( H[p] => H[p] ; A[p] )
+typedef B<p> = ( H[p] => H[p] ; B[p] ) & ( H[p] => F[p] ; F[p] => none )
+
+typedef P<l> = ( H[l] => H[l] ; P[l] ) & ( H[l] => F[l] ; F[l] => none )
+typedef P0<l> = ( H[l] => H[l] ; P0[l] ) (+) ( F[l] => none )
+typedef P1<l> = ( H[l] => F[l] )
+
+typedef P3<l> = ( H[l] => H[l] ; P3[l] ) (+) ( F[l] => H[l] ; H[l] => none )
+
+<t>fun( x : [] :: (H[t]) ).( share H[t] as (A[t]) || (A[t]) );
+
+<t>fun( x : [] :: (H[t]) ).( share H[t] as (B[t]) || none );
+
+<t>fun( x : [] :: (P[t]) ).( share P[t] as (P0[t]) || (P1[t]) );
+
+<t>fun( x : [] :: (P[t]) ).( share P[t] as (P3[t]) || (P1[t]) )
+
+
+

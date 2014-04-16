@@ -1,5 +1,9 @@
 FIXME:
 	rename examples to match their description in the paper.
+//FIXME: work in progress
+//FIXME: gargabe collector used/not on different alternatives
+(safelyEndScope messes up the environment matching algorithm...)
+
 
 TODO:
 	>> error messages: ['the type:', type, 'was not needed']
