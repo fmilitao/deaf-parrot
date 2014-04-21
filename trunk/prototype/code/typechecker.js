@@ -2291,13 +2291,67 @@ var checkProtocolConformance = function( s, a, b, ast ){
 		return res;
 	}
 	
+	// generates all possible variantes of 'p' base on subtyping intersections 
+	var breakProtocol = function(p){
+		// unfold definition
+		p = unAll(p,false,true);
+		//debugger
+		if( p.type === types.IntersectionType ){
+			return p.inner();
+		}
+		
+		if( p.type === types.AlternativeType ){
+			var a = p.inner();
+			var tmp = [];
+			for( var i=0; i<a.length; ++i ){
+				var t = breakProtocol(a[i]);
+				if( tmp.length === 0 ){
+					tmp = t;
+				} else {
+					var tmp1 = [];
+					// assumed t >= 1
+					for( var k=0; k<t.length; ++k ){
+						for( var j=0; j<tmp.length; ++j ){
+							tmp1.push( [t[k]].concat(tmp[j]) );
+						}
+					}
+					tmp = tmp1;
+				}
+			}
+			
+			// each row of tmp includes an alternative type
+			var res = [];
+			for( var k=0; k<tmp.length; ++k ){
+				var t = new AlternativeType();
+				for( var j=0; j<tmp[k].length; ++j ){
+					var x = tmp[k][j];
+					// avoid nesting alternatives inside alternatives (due to 
+					// unfolding definitions)
+					if( x.type === types.AlternativeType ){
+						x = x.inner();
+						for( var i=0; i<x.length; ++i )
+							t.add( x[i] );	
+					}else{
+						t.add( x );
+					}
+				}
+				res.push( t );
+			}
+			
+			return res;
+		}
+		
+		// nothing to do.
+		return [p];
+	}
+	
 	/**
 	 * @param 's' state
 	 * @param 'p' protocol
 	 * @param 'o' protocol to match with result of moving p with s.
 	 * @returns the next state of moving both protocols with 's'.
 	 */
-	var simP = function( s, p, o, ast ){
+	var simP = function( s, p, o, ast, allowExt ){
 
 		// unfold definitions
 		p = unAll(p,false,true);
@@ -2305,7 +2359,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 		// unchanged
 		if( p.type === types.NoneType ){
 			// nothing to be matched
-			return [{ state : s, protocol: p, other: o }];
+			return { state : s, protocol: p, other: o };
 		}
 
 		// now state
@@ -2314,26 +2368,14 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			var alts = s.inner();
 
 			for( var i=0; i<alts.length; ++i ){
-				var tmp = simP( alts[i], p, o, ast );
+				var tmp = simP( alts[i], p, o, ast, allowExt );
 				if( base === null ){
-					base = tmp[0];
-				}
-
-				for( var j=0; j<tmp.length; ++j ){
+					base = tmp;
+				}else{
 					// merge using alternatives
-					base.state = mergeAlt( base.state, tmp[j].state );
-					base.protocol = mergeAlt( base.protocol, tmp[j].protocol );
-					base.other = mergeAlt( base.other, tmp[j].other );
-					/*
-					if( !( equals( base.state, tmp[j].state ) && 
-							equals( base.protocol, tmp[j].protocol ) &&
-							equals( base.other, tmp[j].other ) ) ){
-								debugger
-						assert( ('Alternatives mismatch:'+
-							'\nstate: '+base.state+' '+tmp[j].state+
-							'\nprotocol: '+base.protocol+' '+tmp[j].protocol+
-							'\nmatch: '+base.other+' '+tmp[j].other), ast );
-					}*/
+					base.state = mergeAlt( base.state, tmp.state );
+					base.protocol = mergeAlt( base.protocol, tmp.protocol );
+					base.other = mergeAlt( base.other, tmp.other );
 				}
 			}
 			return { state : base.state, protocol: base.protocol, other: base.other };
@@ -2344,7 +2386,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			var alts = p.inner();
 			for( var i=0; i<alts.length; ++i ){
 				try{
-					return simP( s, alts[i], o, ast );
+					return simP( s, alts[i], o, ast, allowExt );
 				}catch(e){
 					// assume it is an assertion error, continue to try with
 					// some other alternative
@@ -2355,15 +2397,8 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				'state:\t'+s+'\nmatch:\t'+o+'\nprot.:\t'+p, ast );
 		}
 		
-		// all alternatives must work
-		if( p.type === types.IntersectionType ){
-			var alts = p.inner();
-			var w = [];
-			for( var i=0; i<alts.length; ++i ){
-				w = w.concat( simP( s, alts[i], o, ast ) );
-			}
-			return w;
-		}
+		assert( (p.type !== types.IntersectionType) ||
+			('Unsupported protocol format '+p), ast );
 
 		// base case
 		assert( p.type === types.RelyType ||
@@ -2382,12 +2417,14 @@ var checkProtocolConformance = function( s, a, b, ast ){
 		
 		// if I recovered ownership and other did not: OK, will continue without me
 		// this should then be reflected in none on my protocol.
-		 
-//console.debug('\nsimP: '+s+' >> '+p+' match: '+o);
-//console.debug('simM: '+s+' >> '+next.guarantee()+' with '+o);
-		var m = simM( s, o, next.guarantee(), ast );
 		
-		return [{ state: next.guarantee(), protocol: next.rely(), other: m }];
+		var m;
+		if( allowExt && o.type === types.NoneType )
+			m = o;
+		else
+			m = simM( s, o, next.guarantee(), ast );
+		
+		return { state: next.guarantee(), protocol: next.rely(), other: m };
 	}
 	
 	/**
@@ -2415,7 +2452,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 				for( var j=0; j<tmp.length; ++j ){
 					assert( (equals( base.state, tmp[j].state ) &&
 								equals( base.protocol, tmp[j].protocol )) ||
-						('Alternatives mimatch.\n'+
+						('Alternatives mismatch.\n'+
 						'(1)\tstate:\t'+base.state+'\n\tstep:\t'+base.protocol+'\n'+
 						'(2)\tstate:\t'+tmp[j].state+'\n\tstep:\t'+tmp[j].protocol+'\n'), ast );
 				}
@@ -2510,61 +2547,40 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 		var A = state[2]; // new protocol
 		var B = state[3]; // new protocol
 	
-		if( P.type === types.NoneType ){
-			// original protocol ended, just do regular State-Protocol check
-			var l = step( S, A, ast );
-			for( var i=0; i<l.length; ++i ){
-				work.push( [ l[i].state, P, l[i].protocol, B ] );
-			}
-				
-			var r = step( S, B, ast );
-			for( var i=0; i<r.length; ++i ){
-				work.push( [ r[i].state, P, A, r[i].protocol ] );
-			}
-		
-		}else{
-
+		var As = breakProtocol( A );
+		for(var j=0;j<As.length;++j ){
 			// 1. step on A matched by P
-			var l = simP( S, A, P, ast );
-			for( var i=0; i<l.length; ++i ){
-				work.push( [ l[i].state, l[i].other, l[i].protocol, B ] );
-			}
-	
-			// 2. step on B matched by P
-			var r = simP( S, B, P, ast );
-			for( var i=0; i<r.length; ++i ){
-				work.push( [ r[i].state, r[i].other, A, r[i].protocol ] );
-			}
-			
-			// 3. step on P matched by either A or B
-			// unfold definitions in P to enable correct type inspection
-			P = unAll(P,false,true);
-			// tests intersections outside to ensure we can pick either A or B		
-			var Ps = P.type === types.IntersectionType ? P.inner() : [P];
-			for( var i=0; i<Ps.length; ++i ){
-				var o = null;
-				try{
-					o = simP( S, Ps[i], A, ast );
-					for( var j=0; j<o.length; ++j ){
-						work.push( [ o[j].state, o[j].protocol, o[j].other, B ] );
-					}
-				}catch(e){
-					var o = simP( S, Ps[i], B, ast );
-					for( var j=0; j<o.length; ++j ){
-						work.push( [ o[j].state, o[j].protocol, A, o[j].other ] );
-					}
-				}
-			}
-		
+			var l = simP( S, As[j], P, ast, true );
+			work.push( [ l.state, l.other, l.protocol, B ] );
 		}
+
+		var Bs = breakProtocol( B );
+		for(var j=0;j<Bs.length;++j ){
+			// 2. step on B matched by P
+			var r = simP( S, Bs[j], P, ast, true );
+			work.push( [ r.state, r.other, A, r.protocol ] );
+		}
+		
+		// 3. step on P matched by either A or B
+		// unfold definitions in P to enable correct type inspection
+		//P = unAll(P,false,true);
+		// tests intersections outside to ensure we can pick either A or B		
+		var Ps = breakProtocol( P );
+		for( var i=0; i<Ps.length; ++i ){
+			var o = null;
+			try{
+				o = simP( S, Ps[i], A, ast, false );
+				work.push( [ o.state, o.protocol, o.other, B ] );
+			}catch(e){
+				var o = simP( S, Ps[i], B, ast, false );
+				work.push( [ o.state, o.protocol, A, o.other ] );
+			}
+		}
+	
 		// This is useful to safeguard against different JS implementations...
 		// more for debug than requirement of the algorhtm.
 		assert( max_visited-- > 0 || 'ERROR: MAX VISITED', ast);
 	}
-
-	//TODO remember possibility of extending a step, once the simulated protocol
-	// ends and we want to continue to extend it beyond that point.
-	// Use 'null' to flag when returning to 'step' instead of sim.
 
 	return visited.array;
 };
