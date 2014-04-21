@@ -1,4 +1,5 @@
-//FIXME incomplete
+// Note: the second split generates an additional line on the conformance table
+// due to a subtyping algorithm limitation (on expanding definitions.)
 
 typedef A = int
 typedef B = boolean
@@ -22,5 +23,3 @@ typedef TMP_ <f,c> = ( R[f,c] => R[f,c] ; TMP_[f,c] ) & ( R[f,c] => D[f,c] ; D[f
 	share F[f,c] as (Receiver[f,c]) || (TMP[f,c]);
 	share TMP[f,c] as (Storer[f,c]) || (Compressor[f,c])
 	)
-
-

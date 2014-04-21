@@ -1,3 +1,5 @@
+// NOTE: extensions can only occur through subtyping and must not be
+// embedded in the resulting protocols.
 
 // useful states
 typedef H<t> = rw t (Held#[])
@@ -13,13 +15,13 @@ typedef P1<l> = ( H[l] => F[l] )
 
 typedef P3<l> = ( H[l] => H[l] ; P3[l] ) (+) ( F[l] => H[l] ; H[l] => none )
 
+typedef P4<l> = ( H[l] => H[l] ; P4[l] ) & ( H[l] => F[l] ; F[l] => H[l] ; H[l] => none )
+
 <t>fun( x : [] :: (H[t]) ).( share H[t] as (A[t]) || (A[t]) );
 
 <t>fun( x : [] :: (H[t]) ).( share H[t] as (B[t]) || none );
 
 <t>fun( x : [] :: (P[t]) ).( share P[t] as (P0[t]) || (P1[t]) );
 
-<t>fun( x : [] :: (P[t]) ).( share P[t] as (P3[t]) || (P1[t]) )
-
-
+<t>fun( x : [] :: (P4[t]) ).( share P4[t] as (P3[t]) || (P1[t]) )
 

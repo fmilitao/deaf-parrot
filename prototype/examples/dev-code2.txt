@@ -7,6 +7,9 @@ typedef F<f,c> = rw f (Free#[]) * rw c []
 typedef R<f,c> = rw f  (Raw#[]) * rw c A
 typedef D<f,c> = rw f (Done#[]) * rw c B
 
+typedef Check      <f,c> = F[f,c] => none
+typedef CheckMate  <f,c> = F[f,c] => D[f,c] ; D[f,c] => none
+
 typedef Compressor <f,c> = ( F[f,c] => F[f,c] ; Compressor[f,c] ) (+) ( R[f,c] => D[f,c] )
 
 typedef Storer  <f,c> = ( F[f,c] => F[f,c] ; Storer[f,c]) (+) Storer_[f,c] 
@@ -15,6 +18,8 @@ typedef Storer_ <f,c> = ( R[f,c] => R[f,c] ; Storer_[f,c] ) (+) ( D[f,c] => none
 typedef TMP  <f,c> = ( F[f,c] => F[f,c] ; TMP[f,c] ) (+) TMP_[f,c]
 typedef TMP_ <f,c> = ( R[f,c] => R[f,c] ; TMP_[f,c] ) & ( R[f,c] => D[f,c] ; D[f,c] => none )
 
-<f><c>fun( x : [] :: (TMP[f,c]) ).( share TMP[f,c] as (Storer[f,c]) || (Compressor[f,c]) )
+<f><c>fun( x : [] :: (TMP[f,c]) ).( share TMP[f,c] as (Storer[f,c]) || (Compressor[f,c]) );
 
+
+<f><c> fun R( x : [] :: (Check[f,c]) ) : int :: (CheckMate[f,c]).0
 
