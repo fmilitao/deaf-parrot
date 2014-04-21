@@ -731,8 +731,30 @@ var TypeChecker = (function(AST,assertF){
 			case types.BangType:
 				return equals( t1.inner(), t2.inner() );
 			case types.RelyType: {
-				return equals( t1.rely(), t2.rely() ) &&
-					equals( t1.guarantee(), t2.guarantee() );
+				var r1 = t1.rely();
+				var r2 = t2.rely();
+				var g1 = t1.guarantee();
+				var g2 = t2.guarantee();
+
+				if( !equals( r1, r2 ) )
+					return false;
+				
+				try{
+					// consider extensions
+					var gg1 = g1.guarantee();
+					var gg2 = g2.guarantee();
+				
+					if( gg1.type === types.NoneType && gg2.type !== types.NoneType ){
+						var initial = gg2; // initial state
+						var protocol = g2.rely();
+						
+						conformanceStateProtocol( initial, protocol, NoneType);
+						return true;
+					}
+				}catch(e){
+					return equals( g1, g2 );						
+				}
+				return equals( g1, g2 );
 			}
 			case types.GuaranteeType: {
 				return equals( t1.guarantee(), t2.guarantee() ) &&
@@ -2248,19 +2270,8 @@ var checkProtocolConformance = function( s, a, b, ast ){
 		assert( next.type === types.GuaranteeType ||
 			('Expecting GuaranteeType, got: '+next.type), ast);
 
-		// note that we are comparing => A with => B, such that A <: B
-		// i.e. only the resulting
-
 		var g = next.guarantee();
-
-		// we recovered ownership, but the other continues... OK!
-		// the other ended, but we didn't OK
-		if( m.type === types.NoneType )
-			return m; // pretend it also ended
-		
-		// only check, this protocol did not end
-		if( g.type !== types.NoneType )
-			assert( subtypeOf( g, m ) || ('Incompatible: '+g+' vs '+m), ast );
+		assert( subtypeOf( g, m ) || ('Incompatible: '+g+' vs '+m), ast );
 	
 		return next.rely();
 	}
@@ -2351,7 +2362,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 	 * @param 'o' protocol to match with result of moving p with s.
 	 * @returns the next state of moving both protocols with 's'.
 	 */
-	var simP = function( s, p, o, ast, allowExt ){
+	var simP = function( s, p, o, ast ){
 
 		// unfold definitions
 		p = unAll(p,false,true);
@@ -2366,9 +2377,9 @@ var checkProtocolConformance = function( s, a, b, ast ){
 		if( s.type === types.AlternativeType ){
 			var base = null;
 			var alts = s.inner();
-
+//XXX does none mess this up?
 			for( var i=0; i<alts.length; ++i ){
-				var tmp = simP( alts[i], p, o, ast, allowExt );
+				var tmp = simP( alts[i], p, o, ast );
 				if( base === null ){
 					base = tmp;
 				}else{
@@ -2386,7 +2397,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 			var alts = p.inner();
 			for( var i=0; i<alts.length; ++i ){
 				try{
-					return simP( s, alts[i], o, ast, allowExt );
+					return simP( s, alts[i], o, ast );
 				}catch(e){
 					// assume it is an assertion error, continue to try with
 					// some other alternative
@@ -2411,18 +2422,8 @@ var checkProtocolConformance = function( s, a, b, ast ){
 		var next = p.guarantee();
 		assert( next.type === types.GuaranteeType ||
 			('Expecting GuaranteeType, got: '+next.type), ast);
-
-		// check 'o' accepts the guaranteed type when used with 's'
-		// attempts to match with 'o'.
 		
-		// if I recovered ownership and other did not: OK, will continue without me
-		// this should then be reflected in none on my protocol.
-		
-		var m;
-		if( allowExt && o.type === types.NoneType )
-			m = o;
-		else
-			m = simM( s, o, next.guarantee(), ast );
+		var m = simM( s, o, next.guarantee(), ast );
 		
 		return { state: next.guarantee(), protocol: next.rely(), other: m };
 	}
@@ -2432,7 +2433,7 @@ var checkProtocolConformance = function( s, a, b, ast ){
 	 * all possible steps that can be taken. Each entry with object to label
 	 * the next state as 's' and the residual protocol as 'p'.
 	 */
-	var step = function(s,p, ast){ //TODO merge with simP... avoid duplication
+	var step = function(s,p, ast){
 		// unfold definitions
 		p = unAll(p,false,true);
 		
@@ -2520,6 +2521,24 @@ var Visited = function(){
 		return false;
 	};
 	
+	this.containsS = function( state ){
+		var s = state[0];
+		var p = state[1];
+		var a = state[2];
+		var b = state[3];
+		
+		for( var i=0; i<visited.length; ++i ){
+			var tmp = visited[i];
+			if( subtypeOf(s,tmp[0]) &&
+					subtypeOf(p,tmp[1]) && 
+					subtypeOf(a,tmp[2]) &&
+					subtypeOf(b,tmp[3]) )
+				return true;
+		}
+		
+		return false;
+	};
+	
 	this.push = function( state ){
 		visited.push( state );
 	};
@@ -2537,7 +2556,8 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 	while( work.length > 0 ){
 		var state = work.pop();
 
-		if( visited.contains( state ) )
+// this check is slower than pure equals
+		if( visited.containsS( state ) )
 			continue;
 
 		visited.push( state );
@@ -2550,29 +2570,27 @@ var conformanceProtocolProtocol = function( s, p, a, b, ast ){
 		var As = breakProtocol( A );
 		for(var j=0;j<As.length;++j ){
 			// 1. step on A matched by P
-			var l = simP( S, As[j], P, ast, true );
+			var l = simP( S, As[j], P, ast );
 			work.push( [ l.state, l.other, l.protocol, B ] );
 		}
 
 		var Bs = breakProtocol( B );
+		//debugger
 		for(var j=0;j<Bs.length;++j ){
 			// 2. step on B matched by P
-			var r = simP( S, Bs[j], P, ast, true );
+			var r = simP( S, Bs[j], P, ast );
 			work.push( [ r.state, r.other, A, r.protocol ] );
 		}
 		
-		// 3. step on P matched by either A or B
-		// unfold definitions in P to enable correct type inspection
-		//P = unAll(P,false,true);
-		// tests intersections outside to ensure we can pick either A or B		
+		// 3. step on P matched by either A or B		
 		var Ps = breakProtocol( P );
 		for( var i=0; i<Ps.length; ++i ){
 			var o = null;
 			try{
-				o = simP( S, Ps[i], A, ast, false );
+				o = simP( S, Ps[i], A, ast );
 				work.push( [ o.state, o.protocol, o.other, B ] );
 			}catch(e){
-				var o = simP( S, Ps[i], B, ast, false );
+				var o = simP( S, Ps[i], B, ast );
 				work.push( [ o.state, o.protocol, A, o.other ] );
 			}
 		}

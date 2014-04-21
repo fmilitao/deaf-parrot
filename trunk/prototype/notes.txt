@@ -1,3 +1,7 @@
+//NOTE:
+extensions as subtyping. i.e.
+ A => none ; none <: A => B ; B ...
+
 FIXME:
 	rename examples to match their description in the paper.
 //FIXME: work in progress
