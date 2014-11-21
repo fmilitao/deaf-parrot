@@ -1,5 +1,37 @@
 
 
+
+typedef t_GC<t> = rw t (End#int + More#[exists q.(ref q :: (t_GC[q])),(exists A.A)])
+
+typedef p_GC<t> = t_GC[t] => t_GC[t] ; p_GC[t] 
+
+// impossible to encode a garbage collector like this because we cannot
+// push the linear type 'x' into the list as it may contain an alias to GC
+// thus potentially enabling reentrant inspection of shared state.
+open <s,list> = new End#0 in
+ <g>fun( x : (exists A.A) :: (p_GC[g]) ).
+ 		(focus (t_GC[g]);
+ 		let old = new !list in
+				list := More#{old,x};
+				defocus;
+				{}
+		end)
+end
+
+
+/*	
+	open <s,list> = new End#0 in
+		< (t_GC[s]) : GC ,
+		fun R( x : (exists A.A) :: (t_GC[s]) ) : ![] :: (t_GC[s]).
+			let old = new !list in
+				list := More#{old,x};
+				{}
+			end 
+		:: (t_GC[s]) >
+	end
+*/
+
+/*
 <A>fun( x : ( L#int + U#boolean ) :: A ).
 	case x of
 	  L#i ->
@@ -7,3 +39,4 @@
 	| U#b ->
 		0
 	end
+*/
