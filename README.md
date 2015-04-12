@@ -2,7 +2,7 @@
 ![Deaf Parrot](https://raw.githubusercontent.com/fmilitao/deaf-parrot/master/df.png)
 
 
-**[Version 1c5bc9b6fc..](https://cdn.rawgit.com/fmilitao/deaf-parrot/1c5bc9b6fcb7e6bb109b5a36b569b0fa92ffa9b6/prototype/editor.html)**
+**[Try Version 1c5bc9b6fc..](https://cdn.rawgit.com/fmilitao/deaf-parrot/1c5bc9b6fcb7e6bb109b5a36b569b0fa92ffa9b6/prototype/editor.html)**
 
 Link opens browser-based playground editor, includes examples.
 
