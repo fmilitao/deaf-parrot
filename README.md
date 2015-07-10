@@ -6,7 +6,6 @@
 
 Link opens browser-based playground editor, includes examples.
 
-Served via rawgit, somewhat slow initialization and file download.
 
 
 ([screenshot](http://fmilitao.github.io/deaf-parrot/screenshot.png))
