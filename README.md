@@ -8,7 +8,6 @@
 Link opens browser-based playground editor, includes examples.
 
 
-
 ([screenshot](http://fmilitao.github.io/deaf-parrot/screenshot.png))
 
 Paper describing the formal system: ["Rely-Guarantee Protocols"](http://www.cs.cmu.edu/~foliveir/papers/ecoop14-paper.pdf) ([DOI](http://dx.doi.org/10.1007/978-3-662-44202-9_14)).
